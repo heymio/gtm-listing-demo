@@ -1,0 +1,21 @@
+name: Validate gtm-listing-demo skill
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python .agents/skills/gtm-listing-demo/scripts/validate_skill.py
+      - run: python .agents/skills/gtm-listing-demo/scripts/package_skill.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gtm-listing-demo-skill
+          path: dist/gtm-listing-demo.skill.zip
