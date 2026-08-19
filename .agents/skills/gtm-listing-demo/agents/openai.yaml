@@ -1,0 +1,5 @@
+interface:
+  display_name: "GTM Listing Demo"
+  short_description: "Multi-market, multi-channel listing strategy and visual demo workflow"
+  brand_color: "#0F2A5F"
+  default_prompt: "Use the project-defined market, locale, region, channel, category, offer, and page targets. Build Source and Fact Gates before strategy, use evidence-driven localization, map content to actual channel slots, and keep unsupported claims review-only."
