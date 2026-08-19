@@ -1,0 +1,22 @@
+market:
+  country: US
+locale:
+  id: en-US
+region_overlays: []
+channel:
+  type: dtc-product-page
+  site: fictional.example
+category: indoor-air-status-device
+product:
+  name: AeroDock Mini
+offers:
+  - single
+  - desk-kit
+page_targets:
+  - single-product-page
+  - desk-kit-product-page
+output:
+  - strategy
+  - page-ia
+  - interactive-demo
+confidentiality: fictional-public-example
