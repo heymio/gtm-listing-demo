@@ -15,6 +15,10 @@ The requested product detail page is on an Amazon marketplace.
 
 A competitor page shows how that competitor used the channel; it does not prove the current account has the same module or ownership.
 
+## Account capability reuse
+
+A recent, non-conflicted private Account Capability Profile may satisfy a capability question for the same channel/account scope. Missing, stale, malformed, wrong-scope, or contradicted evidence must be re-verified. Do not hard-code private account entitlements in this public profile.
+
 ## Typical brand-controlled areas
 
 - Main Image and Gallery

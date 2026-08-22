@@ -34,4 +34,19 @@ Ratings, reviews, sponsored placements, recommendations, and platform-generated 
 
 ## Message packing
 
-Do not equate a message count with a module count. Use the interaction/module families actually supported by the current marketplace and account.
+Do not equate a message count with a module count. Use carousels, hotspots, video, comparison, and Q&A when the current marketplace and account support them.
+
+## Cross-slot roles
+
+| Slot | Primary role |
+|---|---|
+| Title | Product identity, category, and search language |
+| Bullets | Condensed reasons to buy |
+| Gallery | Rapid visual persuasion |
+| Enhanced content | Mechanism, proof, scenarios, and system relationships |
+| Comparison | Product or offer selection |
+| Q&A or supporting text | Conditions, compatibility, and objections |
+
+## Mobile
+
+Validate gallery navigation, tab labels, comparison scrolling, text size, and downloaded-file review behavior.
