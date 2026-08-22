@@ -28,7 +28,10 @@ REPO_METADATA = [
     "README.md",
     "CHANGELOG.md",
     "VERSION",
+    "docs/install.md",
+    "docs/release-notes-v0.3.3.md",
     ".github/workflows/validate-skill.yml",
+    ".github/workflows/release-validated.yml",
     "scripts/package_codex_bundle.py",
     "scripts/package_common.py",
 ]
