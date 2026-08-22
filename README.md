@@ -6,8 +6,6 @@ It is intentionally **not hard-coded to one country, language, marketplace, bran
 
 ## One normal invocation
 
-Use one repository and one user-facing Skill:
-
 ```text
 $gtm-listing-demo
 ```
@@ -28,18 +26,11 @@ Core Workflow
 └── Project Evidence
 ```
 
-- **Channel profiles** define editable regions, module/slot families, interaction contracts, and verification needs.
-- **Locale profiles** define language and formatting rules, not consumer stereotypes.
-- **Region overlays** define cross-country verification obligations, not personas.
-- **Category overlays** are optional and evidence-driven.
-- **Private overlays** hold company rules, internal capabilities, confidential facts, and approvals.
-- **Project evidence** determines actual consumer needs, scenarios, keywords, claims, and product truth.
+`market`, `locale`, `region_overlays`, `channel`, `site/account capability`, `category`, `offer`, and `page_targets` remain distinct inputs. Locale and region profiles do not create consumer stereotypes; actual project evidence determines consumer needs and product truth.
 
-`market`, `locale`, `region_overlays`, `channel`, `category`, `offer`, and `page_targets` remain distinct inputs.
+## Execution architecture
 
-## Creative-first execution architecture
-
-v0.3.2 separates stage-local execution behind a thin router:
+v0.3.3 retains the v0.3.2 creative-first architecture and hardens the final verification boundary:
 
 ```text
 $gtm-listing-demo
@@ -55,33 +46,13 @@ listing-hardening     Stage 8.5–10
 listing-evidence-auditor
 ```
 
-The repository contains five sibling Skills:
-
-```text
-.agents/skills/
-├── gtm-listing-demo/
-├── listing-planning/
-├── listing-production/
-├── listing-hardening/
-└── listing-evidence-auditor/
-```
+The repository contains five sibling Skills under `.agents/skills/`.
 
 ### Planning: think deeply
 
-Planning preserves product/offer truth, claims, VOC, market and localization research, selected profiles, channel architecture, and message strategy.
+Planning preserves product/offer truth, claims, VOC, market and localization research, selected profiles, channel architecture, and message strategy. It ends with formal Project Brief / Project Definition, Creative Strategy Kernel, Production Handoff, **Complete Demo-Required Production Set**, **Page Visual System**, and one **Evidence Mode** per final asset.
 
-Planning ends with formal state rather than forwarding the whole conversation:
-
-- Project Brief / Project Definition;
-- Creative Strategy Kernel;
-- Production Handoff;
-- **Complete Demo-Required Production Set**;
-- **Page Visual System**;
-- one **Evidence Mode** per final asset.
-
-Priority proof coverage is not the same as a complete Demo asset set.
-
-The Page Visual System gives every final asset deliberate visual direction such as scene family, composition family, tone, product scale, and proof form. Core rule: **Same art direction != same composition.**
+Priority proof coverage is not the same as a complete Demo asset set. Same art direction does not imply the same composition.
 
 Evidence Mode is one of:
 
@@ -91,166 +62,147 @@ CREATIVE_MOCK
 PROOF_VISUAL
 ```
 
-Product-identity evidence is kept separate from proof-grade evidence. A Creative Mock may tolerate missing proof evidence with an explicit limitation, but may not invent the product when identity evidence is missing.
+Product-identity evidence is separate from proof-grade evidence. A Creative Mock may tolerate missing proof evidence with an explicit limitation, but may not invent product identity. `PROOF_VISUAL` in v0.3.3 requires explicit claim/fact/authoritative-source binding before it can become final-consumable.
 
 A reusable Account Capability Profile may answer recurring channel/account questions only when the record is recent, structurally valid, correctly scoped, and non-conflicted.
 
 ### Production: produce narrowly
 
-Production is artifact-first and receives only the Creative Strategy Kernel, Production Handoff, current one-job Asset Packet, referenced source assets, and approved benchmarks/patterns.
+Production remains artifact-first with one-job Asset Packets, Production Context Firewall, candidate history, exact Selection Lock, asset-level and set-level Creative QA, exact-output-bound whole-set review, removal-only Scope Delta, and Smallest Sufficient Cleanup.
 
-v0.3.2 production safeguards include:
+v0.3.3 strengthens Production Freeze:
 
-- one Asset ID / one final role / one shopper task / quantity 1 per Asset Packet;
-- required Evidence Mode and minimal Page Visual System neighbor context;
-- Production Context Firewall;
-- exact candidate history;
-- **Selection Lock** after the user selects a candidate;
-- asset-level Creative QA;
-- **Set-level Creative QA** for scene/composition/tone/scale/proof/message repetition;
-- final whole-set/contact-sheet QA bound to exact current output references;
-- removal-only **Scope Delta** inside Production; additions or material role/message/evidence changes return to Planning;
-- **Smallest Sufficient Cleanup** instead of broad regeneration.
+- required IDs are the union of `asset_set`, page-plan requirements, and still-required blocked roles;
+- every final Asset ID binds to an exact selected `candidate_id` and `output_ref`;
+- a non-empty complete asset set is required;
+- blockers, revision-pending assets, stale Set QA, or missing exact output bindings prevent hardening readiness.
 
-A selected output cannot be silently replaced, given another candidate, or rolled back to review status until explicit reopen intent.
+Creative Approval remains separate from Evidence Verification.
 
 ### Hardening: verify rigorously
 
-Creative Approval is separate from Evidence Verification.
+For Demo Delivery State 0.2, hard verification is fail closed. Caller-authored `pre_9_required=false` cannot disable mandatory pre-Demo verification, and an empty required asset set cannot pass.
 
-`listing-evidence-auditor` recomputes exact-file trust from real files, including path containment, existence, SHA-256, supported image signatures, extension agreement, dimensions, approval binding, semantic role evidence, and required asset-set completeness. Same-context semantic review cannot promote itself to independent review.
+Hardening recomputes required assets from all authoritative sources instead of trusting one non-empty list. Canonical final gates include:
 
-`listing-hardening` owns Delivery State and machine-computed checks including:
+```text
+PRODUCTION_FREEZE_GATE
+PRE_DEMO_ASSET_GATE
+FRONTEND_FIDELITY_GATE
+DEMO_RUNTIME_GATE
+```
 
-- current verified channel/account module budget;
-- approval provenance;
-- module/slot origin;
-- transform authorization;
-- asset-to-slot integrity;
-- Production Freeze completeness;
-- Pre-Demo exact-file evidence;
-- frontend fidelity;
-- final delivery parity.
+The global core never hard-codes one marketplace's account/module ceiling. Channel limits come from current verified site/account capability evidence.
 
-The global core does not hard-code one marketplace's account/module ceiling. Channel limits come from current verified project capability evidence.
+`FRONTEND_FIDELITY_GATE` supports evidence-backed channel-native fidelity and a clearly labeled Content Review fallback when native shell/order/interactions cannot be verified.
 
-Platform Capability evidence and Frontend Visual evidence remain separate. If a native channel shell cannot be verified, use a clearly labeled **Content Review Demo** instead of inventing channel chrome.
+## Evidence auditor
+
+`listing-evidence-auditor` is the exact-file trust boundary. v0.3.3 adds real Pillow decode/load on top of structural format validation:
+
+- PNG: complete IHDR/IDAT/IEND, CRC and zlib integrity;
+- JPEG: SOI/EOI and valid dimensions;
+- WebP: RIFF/WEBP size and valid dimensions;
+- all supported formats: real decoder verification.
+
+Missing Pillow or damaged pixel data cannot receive physical hard-verification PASS.
+
+`PROOF_VISUAL` assets carry exact claim IDs, facts, and authoritative source IDs. File/role/approval agreement alone is insufficient; trusted human or genuinely independent claim review must cover the exact bound claims. Same-context semantic review cannot self-certify independent evidence.
 
 ## Final Demo contract
 
-The final project Demo is delivered as **one standalone `.html` file**.
+The final project Demo is one standalone `.html` file with embedded `data:` resources and inline CSS/JavaScript. Static preflight rejects local/external resources, SVG external references, inline-style external URLs, mixed/external `srcset`, external scripts/stylesheets, and session-only literal `blob:` resources.
 
-- no adjacent `assets/` directory;
-- no Demo ZIP as the user-facing deliverable;
-- runtime images/resources embedded as portable `data:` URIs;
-- inline CSS and JavaScript;
-- no external/local runtime asset dependency;
-- mixed/external `srcset` and literal session-only `blob:` resources rejected;
-- responsive viewport, width breakpoint, and responsive image rules required;
-- when a carousel is present, previous/next controls and verifiable inline click wiring are required;
-- a valid static page is allowed when no carousel is planned.
+A static page without a carousel is valid when the page design does not require one. If carousel markup is present, static structure checks are only a preflight; static JavaScript keywords never equal interaction hard PASS.
 
-Static validation is necessary but not sufficient. Final runtime QA requires the exact HTML to be opened at:
+Final runtime QA uses Playwright/Chromium on the exact HTML SHA with network blocked/observed and checks:
 
 - **1440px desktop**;
-- **390px mobile**.
+- **390px mobile**;
+- zero external network requests;
+- no horizontal overflow;
+- no broken images;
+- no clipped primary copy/controls;
+- actual carousel next and previous transitions when a carousel is present.
 
-At both widths verify no horizontal overflow, no broken images, no clipped primary copy/controls, correct content order and image/text pairing, required interactions, and Review Mode/Consumer Mode integrity.
-
-If browser/runtime verification cannot be performed, mobile/interaction QA remains **BLOCKED** rather than being self-declared PASS.
+If browser/runtime verification cannot run, `DEMO_RUNTIME_GATE` remains `UNVERIFIED/BLOCKED`.
 
 ## Built-in global profiles
 
-### Channels
+Channels include generic Amazon, DTC product page, retailer PDP, and generic marketplace fallback. Locales include `ja-JP`, `en-US`, `de-DE`, and `it-IT`; EU common region overlay is available. Category selling logic remains evidence-driven. Channel/site/account-specific capabilities must still be verified for the actual project.
 
-- Amazon generic marketplace profile
-- Direct-to-consumer product page
-- Retailer PDP
-- Generic marketplace fallback
-
-Channel/site/account-specific capabilities must still be verified for the actual project.
-
-### Locales
-
-- `ja-JP`
-- `en-US`
-- `de-DE`
-- `it-IT`
-- custom profiles can be added
-
-### Regions
-
-- EU common overlay
-
-### Categories
-
-- category template only; product/category selling logic requires deliberate evidence-backed overlays or project evidence.
+Public compatibility profiles and Planning runtime profiles are mirror-checked in CI so they cannot silently drift.
 
 ## Checkpoints and retry behavior
 
-Major Stage Checkpoints are the default. Normal checkpoint output is concise:
+Major Stage Checkpoints remain the default with concise `Done / Open / Next`. Explicit transition commands advance the workflow. Ambiguous pause wording must not be interpreted as unconditional stage advancement; current-asset acceptance stays local to Production unless stage completion conditions are satisfied. Autonomous retry budget remains bounded.
 
-```text
-Done:
-Open:
-Next:
+## Hard-verification dependencies
+
+Repository/Codex hard verification requires:
+
+```bash
+python3 -m pip install Pillow playwright
+python3 -m playwright install chromium
 ```
 
-`continue`, `next`, `go`, and equivalent transition commands advance the workflow instead of triggering unbounded retries. For the same asset and same identified problem, autonomous retry budget is two attempts without new input/evidence.
+Linux CI uses:
+
+```bash
+python3 -m playwright install --with-deps chromium
+```
 
 ## Distribution
 
 ### Repository / Codex bundle
 
 ```bash
-python scripts/package_codex_bundle.py
+python3 scripts/package_codex_bundle.py
 ```
 
-Output:
-
-```text
-dist/gtm-listing-demo-codex-bundle.zip
-```
-
-This contains the five sibling Skills under `.agents/skills/`.
+Output: `dist/gtm-listing-demo-codex-bundle.zip`.
 
 ### One-install compatibility package
 
 ```bash
-python .agents/skills/gtm-listing-demo/scripts/package_skill.py
+python3 .agents/skills/gtm-listing-demo/scripts/package_skill.py
 ```
 
-Output:
+Output: `dist/gtm-listing-demo.skill.zip`.
 
-```text
-dist/gtm-listing-demo.skill.zip
-```
-
-This keeps one user-facing Skill and embeds Planning / Production / Hardening / Evidence Auditor under `gtm-listing-demo/internal-skills/`. It is still one model context, so packaging the auditor does not create independent semantic review. `SINGLE_CONTEXT_LIMITATION.txt` documents that boundary.
+Both v0.3.3 packages are deterministic and symlink-safe. The one-install package excludes repository-only selftests and runs package-local `validate_install.py` after extraction. The Codex bundle extracts itself and runs `validate_overlay.py`. The one-install bundle remains a single model context, so embedded auditor loading does not create independent semantic review.
 
 ## Validation
 
 ```bash
-python .agents/skills/gtm-listing-demo/scripts/validate_skill.py
-python .agents/skills/gtm-listing-demo/scripts/selftest_router.py
-python .agents/skills/listing-planning/scripts/selftest_planning.py
-python .agents/skills/listing-production/scripts/selftest_production.py
-python .agents/skills/listing-evidence-auditor/scripts/selftest_auditor.py
-python .agents/skills/listing-hardening/scripts/selftest_hardening.py
-python .agents/skills/listing-hardening/scripts/selftest_demo_output.py
-python .agents/skills/gtm-listing-demo/scripts/selftest_project_state_validator.py
-python .agents/skills/gtm-listing-demo/scripts/validate_overlay.py
-python .agents/skills/gtm-listing-demo/scripts/package_skill.py
-python scripts/package_codex_bundle.py
+python3 .agents/skills/gtm-listing-demo/scripts/selftest_fail_closed_v033.py
+python3 .agents/skills/gtm-listing-demo/scripts/validate_skill.py
+python3 .agents/skills/gtm-listing-demo/scripts/selftest_router.py
+python3 .agents/skills/listing-planning/scripts/selftest_planning.py
+python3 .agents/skills/listing-production/scripts/selftest_production.py
+python3 .agents/skills/listing-hardening/scripts/selftest_hardening.py
+python3 .agents/skills/listing-hardening/scripts/selftest_demo_output.py
+python3 .agents/skills/listing-hardening/scripts/selftest_demo_runtime_v033.py
+python3 .agents/skills/listing-evidence-auditor/scripts/selftest_auditor.py
+python3 .agents/skills/listing-evidence-auditor/scripts/selftest_image_decode_v033.py
+python3 .agents/skills/gtm-listing-demo/scripts/selftest_project_state_validator.py
+python3 .agents/skills/gtm-listing-demo/scripts/selftest_distribution_v033.py
+python3 .agents/skills/gtm-listing-demo/scripts/validate_overlay.py
+python3 .agents/skills/gtm-listing-demo/scripts/package_skill.py
+python3 scripts/package_codex_bundle.py
 ```
+
+## Release model
+
+v0.3.3 release automation validates the exact candidate SHA in a read-only build job. Pull requests exercise that complete build path but cannot publish. Only a push to current `main` can enter the separate publish job, which has `contents: write`, does not check out/execute repository code, rechecks current-main SHA, release metadata, absent/existing tag state, and download-local checksums, then publishes the immutable Release using an explicit repository target.
 
 ## Public and private boundary
 
-The public repository remains generic. Market/site-specific rules belong in explicit profiles; brand/account facts and confidential project data belong in private overlays/project evidence. Product-pilot learnings may become generic regression rules only after the product-specific content is removed.
+The public repository remains generic. Market/site-specific rules belong in explicit profiles; brand/account facts and confidential project data belong in private overlays/project evidence. Product-pilot learnings may become generic regressions only after product-specific content is removed.
 
 ## Version
 
-`0.3.2`
+`0.3.3`
 
 ## License
 
