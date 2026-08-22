@@ -5,31 +5,44 @@ on:
   push:
     branches: [main]
 
+permissions:
+  contents: read
+
 jobs:
   validate:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: python .agents/skills/gtm-listing-demo/scripts/selftest_fail_closed_v033.py
-      - run: python .agents/skills/gtm-listing-demo/scripts/validate_skill.py
-      - run: python .agents/skills/gtm-listing-demo/scripts/selftest_router.py
-      - run: python .agents/skills/listing-planning/scripts/selftest_planning.py
-      - run: python .agents/skills/listing-production/scripts/selftest_production.py
-      - run: python .agents/skills/listing-evidence-auditor/scripts/selftest_auditor.py
-      - run: python .agents/skills/listing-hardening/scripts/selftest_hardening.py
-      - run: python .agents/skills/listing-hardening/scripts/selftest_demo_output.py
-      - run: python .agents/skills/gtm-listing-demo/scripts/selftest_project_state_validator.py
-      - run: python .agents/skills/gtm-listing-demo/scripts/validate_overlay.py
-      - run: python .agents/skills/gtm-listing-demo/scripts/package_skill.py
-      - run: python scripts/package_codex_bundle.py
-      - run: python -m zipfile -l dist/gtm-listing-demo.skill.zip
-      - run: python -m zipfile -l dist/gtm-listing-demo-codex-bundle.zip
+      - name: Install hard-verification runtime dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --disable-pip-version-check --no-input Pillow playwright
+          python3 -m playwright install --with-deps chromium
+      - run: python3 .agents/skills/gtm-listing-demo/scripts/selftest_fail_closed_v033.py
+      - run: python3 .agents/skills/gtm-listing-demo/scripts/validate_skill.py
+      - run: python3 .agents/skills/gtm-listing-demo/scripts/selftest_router.py
+      - run: python3 .agents/skills/listing-planning/scripts/selftest_planning.py
+      - run: python3 .agents/skills/listing-production/scripts/selftest_production.py
+      - run: python3 .agents/skills/listing-hardening/scripts/selftest_hardening.py
+      - run: python3 .agents/skills/listing-hardening/scripts/selftest_demo_output.py
+      - run: python3 .agents/skills/listing-hardening/scripts/selftest_demo_runtime_v033.py
+      - run: python3 .agents/skills/listing-evidence-auditor/scripts/selftest_auditor.py
+      - run: python3 .agents/skills/listing-evidence-auditor/scripts/selftest_image_decode_v033.py
+      - run: python3 .agents/skills/gtm-listing-demo/scripts/selftest_project_state_validator.py
+      - run: python3 .agents/skills/gtm-listing-demo/scripts/validate_overlay.py
+      - run: python3 .agents/skills/gtm-listing-demo/scripts/package_skill.py
+      - run: python3 scripts/package_codex_bundle.py
+      - run: python3 -m zipfile -l dist/gtm-listing-demo.skill.zip
+      - run: python3 -m zipfile -l dist/gtm-listing-demo-codex-bundle.zip
       - uses: actions/upload-artifact@v4
         with:
-          name: gtm-listing-demo-v0.3.2-candidate
+          name: gtm-listing-demo-v0.3.3-candidate
           path: |
             dist/gtm-listing-demo.skill.zip
             dist/gtm-listing-demo-codex-bundle.zip
