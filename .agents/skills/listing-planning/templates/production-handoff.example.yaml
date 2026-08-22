@@ -1,0 +1,76 @@
+production_handoff:
+  project:
+    market: DE
+    locale: de-DE
+    channel: amazon
+    site: amazon.de
+    category: project-defined
+    product: Example Product
+    offer: single
+    page_target: single-listing
+  page_plan:
+    gallery:
+      - G1
+      - G2
+    enhanced_content:
+      - A1
+    other_required_regions: []
+  asset_set:
+    - asset_id: G1
+      role: gallery-native
+      slot: G1
+      primary_message: Core positioning
+      evidence_mode: SOURCE_FAITHFUL
+      status: READY
+    - asset_id: G2
+      role: gallery-native
+      slot: G2
+      primary_message: Mechanism proof
+      evidence_mode: PROOF_VISUAL
+      status: READY
+    - asset_id: A1
+      role: enhanced-content
+      slot: A1
+      primary_message: Lifestyle expansion
+      evidence_mode: CREATIVE_MOCK
+      status: READY
+  source_assets:
+    - source_id: SRC-P01
+      role: real-product-source
+      required_by:
+        - G1
+        - G2
+        - A1
+  product_invariants:
+    - preserve exact product identity
+  creative_strategy_ref: creative-strategy.yaml
+  global_visual_direction:
+    - product-first commercial hierarchy
+  page_visual_system:
+    asset_directions:
+      - asset_id: G1
+        visual_role: hero-positioning
+        scene_family: clean-product-stage
+        composition_family: centered-hero
+        tone: bright-neutral
+        product_scale: large
+        proof_form: source-faithful-product
+      - asset_id: G2
+        visual_role: mechanism-proof
+        scene_family: technical-detail
+        composition_family: close-up-explainer
+        tone: neutral-technical
+        product_scale: close-up
+        proof_form: mechanism
+      - asset_id: A1
+        visual_role: lifestyle-use
+        scene_family: realistic-home
+        composition_family: wide-lifestyle
+        tone: warm-natural
+        product_scale: medium
+        proof_form: lifestyle
+  visual_benchmark_refs:
+    - BENCH-01
+  prohibited:
+    - unsupported claims
+  blocked_assets: []

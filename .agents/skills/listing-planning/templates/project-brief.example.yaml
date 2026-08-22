@@ -1,0 +1,21 @@
+project:
+  market: DE
+  locale: de-DE
+  channel: amazon
+  site: amazon.de
+  category: project-defined
+  product: Example Product
+offers:
+  - id: single
+product_truth:
+  confirmed: []
+  conditional: []
+  prohibited: []
+claim_boundaries:
+  consumer_ready: []
+  pending: []
+  prohibited: []
+consumer_evidence_sources: []
+channel_reference:
+  primary_reference: project-defined
+open_business_decisions: []

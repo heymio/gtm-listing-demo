@@ -1,0 +1,15 @@
+creative_strategy:
+  target_user: []
+  core_tension: Evidence-backed tension
+  core_promise: Evidence-backed promise
+  primary_purchase_reasons: []
+  shopper_barriers: []
+  reasons_to_believe: []
+  message_priority:
+    p0: []
+    p1: []
+    p2: []
+  market_implications: []
+  proof_principles: []
+  visual_direction: []
+  visual_anti_patterns: []
