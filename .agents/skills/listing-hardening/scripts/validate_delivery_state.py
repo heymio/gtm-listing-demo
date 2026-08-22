@@ -1,15 +1,27 @@
 #!/usr/bin/env python3
-"""Validate generic listing Delivery State and compute hardening gates."""
+"""Validate Global listing Delivery State with v0.3.3 fail-closed hard gates."""
 
 from __future__ import annotations
 
 import argparse
-import hashlib
+import importlib.util
 import json
+import re
 from pathlib import Path
 from typing import Any
 
-FINAL_EVIDENCE_STATUSES = {"VERIFIED", "HUMAN_APPROVED"}
+SCRIPT_DIR = Path(__file__).resolve().parent
+CORE_PATH = SCRIPT_DIR / "_delivery_state_core.py"
+SPEC = importlib.util.spec_from_file_location("global_delivery_state_core", CORE_PATH)
+if SPEC is None or SPEC.loader is None:
+    raise RuntimeError(f"cannot load delivery validator core: {CORE_PATH}")
+_core = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(_core)
+
+canonical_hash = _core.canonical_hash
+FINAL_EVIDENCE_STATUSES = _core.FINAL_EVIDENCE_STATUSES
+HEX64 = re.compile(r"^[0-9a-f]{64}$")
+
 GATE_NAMES = [
     "SCHEMA_GATE",
     "CHANNEL_MODULE_BUDGET_GATE",
@@ -21,283 +33,287 @@ GATE_NAMES = [
     "EVIDENCE_RECONCILIATION_GATE",
     "PRE_DEMO_ASSET_GATE",
     "FRONTEND_FIDELITY_GATE",
+    "DEMO_RUNTIME_GATE",
     "DELIVERY_PARITY_GATE",
 ]
-
-
-def canonical_hash(value: Any) -> str:
-    encoded = json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
-    return hashlib.sha256(encoded).hexdigest()
 
 
 def _gate(status: str, messages: list[str] | None = None) -> dict[str, Any]:
     return {"status": status, "messages": messages or []}
 
 
-def _asset_payload(asset: dict[str, Any]) -> dict[str, Any]:
-    return {key: asset.get(key) for key in ["asset_id", "canonical_source", "sha256", "role", "page_offer_scope", "allowed_slots"]}
-
-
-def _unique_dict(items: Any, key: str, label: str, errors: list[str]) -> dict[str, dict[str, Any]]:
-    result: dict[str, dict[str, Any]] = {}
-    if not isinstance(items, list):
-        errors.append(f"{label} must be a list")
-        return result
-    for index, item in enumerate(items):
-        if not isinstance(item, dict):
-            errors.append(f"{label}[{index}] must be an object")
-            continue
-        value = item.get(key)
-        if not isinstance(value, str) or not value:
-            errors.append(f"{label}[{index}].{key} must be a non-empty string")
-            continue
-        if value in result:
-            errors.append(f"duplicate {label}.{key}: {value}")
-            continue
-        result[value] = item
-    return result
-
-
 def _schema(state: Any) -> tuple[list[str], dict[str, Any]]:
-    errors: list[str] = []
-    indexes: dict[str, Any] = {}
+    errors, indexes = _core._schema(state)
     if not isinstance(state, dict):
-        return ["Delivery State root must be an object"], indexes
-    if state.get("schema_version") != "0.2":
-        errors.append("schema_version must be 0.2")
-    channel = state.get("channel")
-    if not isinstance(channel, dict):
-        errors.append("channel must be an object")
-    elif not isinstance(channel.get("id"), str) or not channel.get("id"):
-        errors.append("channel.id must be a non-empty string")
-    indexes["assets"] = _unique_dict(state.get("assets"), "asset_id", "assets", errors)
-    indexes["approvals"] = _unique_dict(state.get("approval_events"), "approval_id", "approval_events", errors)
-    indexes["contracts"] = _unique_dict(state.get("asset_slot_contract"), "slot_id", "asset_slot_contract", errors)
-
-    locked = state.get("locked_module_plan")
-    if not isinstance(locked, dict):
-        errors.append("locked_module_plan must be an object")
-        modules: Any = []
-    else:
-        modules = locked.get("modules")
-    indexes["modules"] = _unique_dict(modules, "module_id", "locked_module_plan.modules", errors)
-
-    implementation = state.get("implementation")
-    if not isinstance(implementation, dict):
-        errors.append("implementation must be an object")
-        impl_slots: Any = []
-    else:
-        impl_slots = implementation.get("slots")
-    indexes["impl_slots"] = _unique_dict(impl_slots, "slot_id", "implementation.slots", errors)
-    if isinstance(impl_slots, list):
-        seen_module_ids: set[str] = set()
-        for index, item in enumerate(impl_slots):
-            if not isinstance(item, dict):
-                continue
-            module_id = item.get("module_id")
-            if not isinstance(module_id, str) or not module_id:
-                errors.append(f"implementation.slots[{index}].module_id must be a non-empty string")
-            elif module_id in seen_module_ids:
-                errors.append(f"duplicate implementation.slots.module_id: {module_id}")
-            else:
-                seen_module_ids.add(module_id)
-
-    freeze = state.get("production_freeze")
-    if not isinstance(freeze, dict):
-        errors.append("production_freeze must be an object")
-    audit = state.get("audit_checkpoints", {})
-    if audit is not None and not isinstance(audit, dict):
-        errors.append("audit_checkpoints must be an object")
+        return errors, indexes
+    for key in ["frontend_fidelity", "demo", "demo_runtime_evidence"]:
+        value = state.get(key)
+        if value is not None and not isinstance(value, dict):
+            errors.append(f"{key} must be an object when present")
+    required = state.get("required_asset_ids")
+    if required is not None:
+        if not isinstance(required, list) or any(not isinstance(x, str) or not x for x in required):
+            errors.append("required_asset_ids must be a list of Asset IDs when present")
+        elif len(required) != len(set(required)):
+            errors.append("required_asset_ids must not contain duplicates")
     return errors, indexes
 
 
-def _channel_budget(state: dict[str, Any], modules: dict[str, Any]) -> dict[str, Any]:
-    channel = state.get("channel", {})
-    capabilities = channel.get("capabilities") if isinstance(channel, dict) else None
-    max_modules = capabilities.get("declared_max_modules") if isinstance(capabilities, dict) else None
-    if not isinstance(max_modules, int) or isinstance(max_modules, bool) or max_modules < 0:
-        return _gate("UNVERIFIED", ["current channel/account declared_max_modules is not verified"])
-    if len(modules) > max_modules:
-        return _gate("FAIL", [f"locked plan has {len(modules)} modules, exceeding declared maximum {max_modules}"])
-    return _gate("PASS")
+def _demo_required(state: dict[str, Any]) -> bool:
+    return state.get("schema_version") == "0.2"
 
 
-def _approval_gate(state: dict[str, Any], indexes: dict[str, Any]) -> dict[str, Any]:
-    messages: list[str] = []
-    approvals = indexes["approvals"]
-    for asset_id, asset in indexes["assets"].items():
-        if asset.get("status") != "LOCKED":
-            continue
-        approval_id = asset.get("approval_id")
-        event = approvals.get(approval_id) if isinstance(approval_id, str) else None
-        expected_hash = canonical_hash(_asset_payload(asset))
-        if not event or event.get("actor") != "user" or event.get("scope") != f"asset_lock:{asset_id}" or event.get("approved_hash") != expected_hash:
-            messages.append(f"asset {asset_id} lacks exact user approval provenance")
-    locked = state.get("locked_module_plan", {})
-    approval_id = locked.get("approval_id") if isinstance(locked, dict) else None
-    event = approvals.get(approval_id) if isinstance(approval_id, str) else None
-    modules = locked.get("modules", []) if isinstance(locked, dict) else []
-    expected_plan_hash = canonical_hash({"modules": modules})
-    if not event or event.get("actor") != "user" or event.get("scope") != "module_plan" or event.get("approved_hash") != expected_plan_hash:
-        messages.append("locked module plan lacks exact user approval provenance")
-    return _gate("FAIL" if messages else "PASS", messages)
-
-
-def _module_origin(state: dict[str, Any], indexes: dict[str, Any]) -> dict[str, Any]:
-    messages: list[str] = []
-    locked = state.get("locked_module_plan", {})
-    modules = locked.get("modules", []) if isinstance(locked, dict) else []
-    expected_hash = canonical_hash({"modules": modules})
-    if locked.get("plan_hash") != expected_hash:
-        messages.append("locked module plan hash does not match canonical modules")
-    implementation = state.get("implementation", {})
-    if implementation.get("plan_hash") != expected_hash:
-        messages.append("implementation plan_hash differs from locked plan")
-    for slot in indexes["impl_slots"].values():
-        module_id = slot.get("module_id")
-        module = indexes["modules"].get(module_id)
-        if not module:
-            messages.append(f"implementation slot references unknown module {module_id}")
-            continue
-        for key in ["native_type", "interaction"]:
-            if slot.get(key) != module.get(key):
-                messages.append(f"module {module_id} {key} drifted from locked plan")
-    return _gate("FAIL" if messages else "PASS", messages)
-
-
-def _transform_gate(state: dict[str, Any], indexes: dict[str, Any]) -> dict[str, Any]:
-    messages: list[str] = []
-    approvals = indexes["approvals"]
-    for asset_id, asset in indexes["assets"].items():
-        transform = asset.get("transform")
-        if transform is None:
-            continue
-        if not isinstance(transform, dict):
-            messages.append(f"asset {asset_id} transform must be an object")
-            continue
-        approval_id = transform.get("approval_id")
-        event = approvals.get(approval_id) if isinstance(approval_id, str) else None
-        if not event or event.get("actor") != "user" or event.get("scope") != f"transform:{asset_id}":
-            messages.append(f"asset {asset_id} transform lacks explicit authorization")
-    return _gate("FAIL" if messages else "PASS", messages)
-
-
-def _asset_slot_gate(indexes: dict[str, Any]) -> dict[str, Any]:
-    messages: list[str] = []
-    assets, impl = indexes["assets"], indexes["impl_slots"]
-    for slot_id, contract in indexes["contracts"].items():
-        impl_slot = impl.get(slot_id)
-        if not impl_slot:
-            messages.append(f"required slot {slot_id} missing from implementation")
-            continue
-        if contract.get("module_id") != impl_slot.get("module_id"):
-            messages.append(f"slot {slot_id} module_id mismatch")
-        required = contract.get("required_asset_ids", [])
-        if not isinstance(required, list):
-            messages.append(f"slot {slot_id} required_asset_ids must be a list")
-            continue
-        impl_assets = impl_slot.get("asset_ids", [])
-        for asset_id in required:
-            asset = assets.get(asset_id)
-            if not asset:
-                messages.append(f"slot {slot_id} missing required asset {asset_id}")
-                continue
-            if slot_id not in asset.get("allowed_slots", []):
-                messages.append(f"asset {asset_id} is not allowed in slot {slot_id}")
-            if asset_id not in impl_assets:
-                messages.append(f"implementation slot {slot_id} does not use required asset {asset_id}")
-    return _gate("FAIL" if messages else "PASS", messages)
-
-
-def _required_asset_ids(indexes: dict[str, Any]) -> set[str]:
+def _required_asset_ids(state: dict[str, Any], indexes: dict[str, Any]) -> set[str]:
     result: set[str] = set()
-    for contract in indexes["contracts"].values():
-        values = contract.get("required_asset_ids", [])
-        if isinstance(values, list):
-            result.update(value for value in values if isinstance(value, str) and value)
+    for module in indexes.get("modules", {}).values():
+        for asset_id in module.get("asset_ids", []):
+            if isinstance(asset_id, str) and asset_id:
+                result.add(asset_id)
+    for slot in indexes.get("impl_slots", {}).values():
+        for asset_id in slot.get("asset_ids", []):
+            if isinstance(asset_id, str) and asset_id:
+                result.add(asset_id)
+    for contract in indexes.get("contracts", {}).values():
+        for asset_id in contract.get("required_asset_ids", []):
+            if isinstance(asset_id, str) and asset_id:
+                result.add(asset_id)
+    for asset_id in state.get("required_asset_ids", []):
+        if isinstance(asset_id, str) and asset_id:
+            result.add(asset_id)
+    freeze = state.get("production_freeze") or {}
+    if isinstance(freeze, dict):
+        for key in ["blocked_assets", "revision_pending"]:
+            values = freeze.get(key, [])
+            if isinstance(values, list):
+                for asset_id in values:
+                    if isinstance(asset_id, str) and asset_id:
+                        result.add(asset_id)
     return result
 
 
-def _production_freeze(state: dict[str, Any], indexes: dict[str, Any]) -> dict[str, Any]:
-    freeze = state.get("production_freeze", {})
-    required = _required_asset_ids(indexes)
-    messages: list[str] = []
+def _production_freeze_gate(state: dict[str, Any], indexes: dict[str, Any]) -> dict[str, Any]:
+    if not _demo_required(state):
+        return _gate("N/A", ["Production Freeze hard gate applies to Demo Delivery State 0.2"])
+    errors: list[str] = []
+    checkpoints = state.get("audit_checkpoints") or {}
+    if not isinstance(checkpoints, dict) or checkpoints.get("pre_9_required") is not True:
+        errors.append("pre_9_required cannot disable mandatory Demo hardening")
+
+    required = _required_asset_ids(state, indexes)
+    if not required:
+        errors.append("Demo delivery requires a non-empty required asset set")
+
+    freeze = state.get("production_freeze")
+    if not isinstance(freeze, dict):
+        return _gate("FAIL", errors + ["production_freeze missing before pre-Demo hardening"])
+
     expected = freeze.get("expected_assets")
     approved = freeze.get("user_approved_assets")
-    refs = freeze.get("approved_output_refs")
-    if not isinstance(expected, int) or isinstance(expected, bool) or expected != len(required):
-        messages.append(f"production freeze expected_assets must equal required asset count {len(required)}")
-    if not isinstance(approved, list) or len(approved) != len(set(approved)) or set(approved) != required:
-        messages.append("production freeze user_approved_assets must equal the exact required asset ID set")
-    if not isinstance(refs, list) or len(refs) != len(required) or any(not isinstance(ref, str) or not ref for ref in refs):
-        messages.append("production freeze approved_output_refs must contain one non-empty ref per required asset")
-    return _gate("FAIL" if messages else "PASS", messages)
+    blocked = freeze.get("blocked_assets")
+    revision_pending = freeze.get("revision_pending")
+    set_qa_status = freeze.get("set_qa_status")
+    ready = freeze.get("ready_for_hardening")
+    approved_outputs = freeze.get("approved_outputs")
+
+    if not isinstance(expected, int) or isinstance(expected, bool) or expected < 1:
+        errors.append("production_freeze expected_assets must be a positive integer")
+    elif expected != len(required):
+        errors.append(f"production_freeze expected_assets {expected} does not match required asset count {len(required)}")
+
+    if not isinstance(approved, list) or any(not isinstance(asset_id, str) or not asset_id for asset_id in approved):
+        errors.append("production_freeze user_approved_assets must be a list of Asset IDs")
+        approved = []
+    elif len(approved) != len(set(approved)):
+        errors.append("production_freeze user_approved_assets must not contain duplicates")
+    if set(approved) != required:
+        missing = sorted(required - set(approved))
+        unexpected = sorted(set(approved) - required)
+        detail: list[str] = []
+        if missing:
+            detail.append("missing: " + ", ".join(missing))
+        if unexpected:
+            detail.append("unexpected: " + ", ".join(unexpected))
+        errors.append("production_freeze approved Asset IDs must equal required set" + (f" ({'; '.join(detail)})" if detail else ""))
+
+    if not isinstance(blocked, list):
+        errors.append("production_freeze blocked_assets must be a list")
+    elif blocked:
+        errors.append("production_freeze contains blocked assets: " + ", ".join(str(x) for x in blocked))
+    if not isinstance(revision_pending, list):
+        errors.append("production_freeze revision_pending must be a list")
+    elif revision_pending:
+        errors.append("production_freeze contains revision-pending assets: " + ", ".join(str(x) for x in revision_pending))
+    if set_qa_status not in {"CLEAR", "USER_ACCEPTED"}:
+        errors.append(f"production_freeze set_qa_status must be CLEAR or USER_ACCEPTED, got {set_qa_status!r}")
+    if ready is not True:
+        errors.append("production_freeze ready_for_hardening must be true")
+
+    if not isinstance(approved_outputs, dict):
+        errors.append("production_freeze approved_outputs must map Asset ID to candidate_id/output_ref")
+        approved_outputs = {}
+    if set(approved_outputs) != required:
+        errors.append("production_freeze approved_outputs keys must equal required asset set")
+    seen_refs: set[str] = set()
+    for asset_id in sorted(required):
+        row = approved_outputs.get(asset_id)
+        if not isinstance(row, dict):
+            errors.append(f"approved_outputs[{asset_id}] must be an object")
+            continue
+        candidate_id = row.get("candidate_id")
+        output_ref = row.get("output_ref")
+        if not isinstance(candidate_id, str) or not candidate_id.strip():
+            errors.append(f"approved_outputs[{asset_id}].candidate_id missing")
+        if not isinstance(output_ref, str) or not output_ref.strip():
+            errors.append(f"approved_outputs[{asset_id}].output_ref missing")
+        elif output_ref in seen_refs:
+            errors.append(f"duplicate output_ref without explicit reuse authorization: {output_ref}")
+        else:
+            seen_refs.add(output_ref)
+
+    freeze_required = freeze.get("required_asset_ids")
+    if freeze_required is not None and (not isinstance(freeze_required, list) or set(freeze_required) != required):
+        errors.append("production_freeze required_asset_ids must equal recomputed required set")
+    return _gate("FAIL" if errors else "PASS", errors)
 
 
-def _early_evidence_gate(state: dict[str, Any]) -> dict[str, Any]:
-    checkpoints = state.get("audit_checkpoints", {})
-    if not isinstance(checkpoints, dict) or checkpoints.get("post_6_5_required") is not True:
-        return _gate("N/A")
-    evidence = state.get("post_6_5_auditor_evidence")
-    if not isinstance(evidence, dict) or evidence.get("asset_set_gate", {}).get("status") != "PASS":
-        return _gate("UNVERIFIED", ["targeted inherited/reused asset evidence is not verified"])
-    return _gate("PASS")
+def _asset_slot_gate(state: dict[str, Any], indexes: dict[str, Any]) -> dict[str, Any]:
+    base = _core._asset_slot_gate(indexes)
+    errors = list(base.get("messages", [])) if base.get("status") == "FAIL" else []
+    required = _required_asset_ids(state, indexes)
+    assets = set(indexes.get("assets", {}))
+    missing = sorted(required - assets)
+    if missing:
+        errors.append("required assets missing from Delivery State assets: " + ", ".join(missing))
+
+    contracts = set(indexes.get("contracts", {}))
+    for slot_id, slot in indexes.get("impl_slots", {}).items():
+        asset_ids = slot.get("asset_ids", [])
+        if isinstance(asset_ids, list) and asset_ids and slot_id not in contracts:
+            errors.append(f"{slot_id}: implemented asset-bearing slot has no asset-slot contract")
+    if errors:
+        return _gate("FAIL", errors)
+    if required and not contracts:
+        return _gate("FAIL", ["required assets exist but asset-slot contract is empty"])
+    return base
 
 
 def _pre_demo_gate(state: dict[str, Any], indexes: dict[str, Any]) -> dict[str, Any]:
-    checkpoints = state.get("audit_checkpoints", {})
-    if not isinstance(checkpoints, dict) or checkpoints.get("pre_9_required") is not True:
+    if not _demo_required(state):
         return _gate("N/A")
+    errors: list[str] = []
+    checkpoints = state.get("audit_checkpoints") or {}
+    if not isinstance(checkpoints, dict) or checkpoints.get("pre_9_required") is not True:
+        errors.append("pre_9_required cannot disable mandatory Demo evidence audit")
+    required = _required_asset_ids(state, indexes)
+    if not required:
+        errors.append("Demo delivery requires a non-empty required asset set")
+
     evidence = state.get("auditor_evidence")
     if not isinstance(evidence, dict):
-        return _gate("UNVERIFIED", ["pre-Demo auditor evidence missing"])
-    messages: list[str] = []
+        return _gate("UNVERIFIED", errors + ["pre-Demo auditor evidence missing"])
+    checkpoint = evidence.get("checkpoint")
+    if checkpoint not in {"pre-demo", "pre-9"}:
+        errors.append("auditor evidence checkpoint must be pre-demo/pre-9")
     if evidence.get("asset_set_gate", {}).get("status") != "PASS":
-        messages.append("auditor asset_set_gate is not PASS")
-    evidence_assets = evidence.get("assets", {})
+        errors.append("auditor asset_set_gate is not PASS")
+    evidence_assets = evidence.get("assets")
     if not isinstance(evidence_assets, dict):
-        messages.append("auditor assets mapping missing")
+        errors.append("auditor assets mapping missing")
         evidence_assets = {}
-    for asset_id in _required_asset_ids(indexes):
-        asset = indexes["assets"].get(asset_id, {})
+    for asset_id in sorted(required):
+        asset = indexes.get("assets", {}).get(asset_id, {})
         item = evidence_assets.get(asset_id)
         if not isinstance(item, dict):
-            messages.append(f"required asset {asset_id} missing from auditor evidence")
+            errors.append(f"required asset {asset_id} missing from auditor evidence")
             continue
         if item.get("physical_sha256") != asset.get("sha256"):
-            messages.append(f"required asset {asset_id} auditor hash differs from locked asset hash")
+            errors.append(f"required asset {asset_id} auditor hash differs from locked asset hash")
         if item.get("effective_status") not in FINAL_EVIDENCE_STATUSES:
-            messages.append(f"required asset {asset_id} evidence status is not final usable")
-    return _gate("FAIL" if messages else "PASS", messages)
+            errors.append(f"required asset {asset_id} evidence status is not final usable")
+    return _gate("FAIL" if errors else "PASS", errors)
 
 
-def _frontend_gate(state: dict[str, Any]) -> dict[str, Any]:
-    fidelity = state.get("frontend_fidelity")
-    if not isinstance(fidelity, dict) or fidelity.get("required") is not True:
+def _frontend_payload(value: dict[str, Any]) -> dict[str, Any]:
+    keys = [
+        "mode", "evidence_refs", "shell_supported", "section_order_supported",
+        "regions_distinguished", "desktop_structure_known", "mobile_behavior",
+        "interactions_supported", "content_regions_verified", "unsupported_ui_fabricated",
+        "content_review_labeled", "channel_native_claimed",
+    ]
+    return {key: value.get(key) for key in keys}
+
+
+def _frontend_fidelity_gate(state: dict[str, Any], indexes: dict[str, Any]) -> dict[str, Any]:
+    if not _demo_required(state):
         return _gate("N/A")
-    if fidelity.get("status") == "PASS" and isinstance(fidelity.get("reference_ref"), str) and fidelity.get("reference_ref"):
-        return _gate("PASS")
-    if fidelity.get("status") == "FAIL":
-        return _gate("FAIL", ["current frontend reference does not support native fidelity"])
-    return _gate("UNVERIFIED", ["current frontend visual reference is missing or unverified; use Content Review Demo"])
+    value = state.get("frontend_fidelity")
+    if not isinstance(value, dict):
+        return _gate("UNVERIFIED", ["frontend_fidelity evidence missing"])
+    mode = value.get("mode")
+    refs = value.get("evidence_refs")
+    errors: list[str] = []
+    if not isinstance(refs, list) or not refs or any(not isinstance(ref, str) or not ref.strip() for ref in refs):
+        errors.append("frontend_fidelity requires non-empty evidence_refs")
+    if mode == "CHANNEL_NATIVE":
+        for key in ["shell_supported", "section_order_supported", "regions_distinguished", "desktop_structure_known", "interactions_supported", "content_regions_verified"]:
+            if value.get(key) is not True:
+                errors.append(f"frontend_fidelity {key} must be true for CHANNEL_NATIVE")
+        if value.get("mobile_behavior") not in {"KNOWN", "SCOPED_OUT"}:
+            errors.append("frontend_fidelity mobile_behavior must be KNOWN or SCOPED_OUT")
+        if value.get("unsupported_ui_fabricated") is not False:
+            errors.append("frontend_fidelity unsupported_ui_fabricated must be false")
+    elif mode == "CONTENT_REVIEW":
+        if value.get("content_review_labeled") is not True:
+            errors.append("CONTENT_REVIEW mode must be explicitly labeled")
+        if value.get("channel_native_claimed") is True:
+            errors.append("CONTENT_REVIEW mode cannot claim channel-native fidelity")
+    else:
+        errors.append("frontend_fidelity mode must be CHANNEL_NATIVE or CONTENT_REVIEW")
+
+    approval_id = value.get("approval_id")
+    approval = indexes.get("approvals", {}).get(approval_id) if isinstance(approval_id, str) else None
+    expected_hash = canonical_hash(_frontend_payload(value))
+    if not approval or approval.get("actor") != "user" or approval.get("scope") != "frontend_fidelity" or approval.get("approved_hash") != expected_hash:
+        errors.append("frontend_fidelity lacks exact user approval provenance")
+    return _gate("FAIL" if errors else "PASS", errors)
 
 
-def _delivery_parity(indexes: dict[str, Any]) -> dict[str, Any]:
-    messages: list[str] = []
-    modules = indexes["modules"]
-    impl_by_module = {slot.get("module_id"): slot for slot in indexes["impl_slots"].values() if isinstance(slot.get("module_id"), str)}
-    if set(impl_by_module) != set(modules):
-        messages.append("implementation module set differs from locked module plan")
-    for module_id, module in modules.items():
-        slot = impl_by_module.get(module_id)
-        if not slot:
-            continue
-        for key in ["native_type", "interaction"]:
-            if slot.get(key) != module.get(key):
-                messages.append(f"module {module_id} {key} differs at delivery")
-        if sorted(slot.get("asset_ids", [])) != sorted(module.get("asset_ids", [])):
-            messages.append(f"module {module_id} asset set differs at delivery")
-    return _gate("FAIL" if messages else "PASS", messages)
+def _demo_runtime_gate(state: dict[str, Any]) -> dict[str, Any]:
+    if not _demo_required(state):
+        return _gate("N/A")
+    demo = state.get("demo")
+    evidence = state.get("demo_runtime_evidence")
+    if not isinstance(demo, dict) or not isinstance(demo.get("sha256"), str) or not HEX64.fullmatch(demo.get("sha256", "")):
+        return _gate("UNVERIFIED", ["Demo exact SHA-256 missing from Delivery State"])
+    if not isinstance(evidence, dict):
+        return _gate("UNVERIFIED", ["browser runtime evidence missing"])
+    errors: list[str] = []
+    if evidence.get("demo_sha256") != demo.get("sha256"):
+        errors.append("runtime evidence demo_sha256 does not match exact Demo SHA-256")
+    if evidence.get("validator") != "browser-runtime":
+        errors.append("runtime evidence validator must be browser-runtime")
+    if evidence.get("network_requests") != 0:
+        errors.append("runtime Demo must make zero network requests")
+    viewports = evidence.get("viewports")
+    if not isinstance(viewports, dict):
+        errors.append("runtime evidence viewports missing")
+    else:
+        for key in ["1440", "390"]:
+            row = viewports.get(key)
+            if not isinstance(row, dict):
+                errors.append(f"runtime viewport {key}px missing")
+                continue
+            if row.get("horizontal_overflow") is not False:
+                errors.append(f"runtime viewport {key}px has horizontal overflow or unknown state")
+            if row.get("broken_images") != 0:
+                errors.append(f"runtime viewport {key}px has broken images or unknown state")
+            if row.get("clipped_primary_elements") != 0:
+                errors.append(f"runtime viewport {key}px has clipped primary elements or unknown state")
+    carousel = evidence.get("carousel")
+    if isinstance(carousel, dict) and carousel.get("present") is True:
+        if carousel.get("next_verified") is not True or carousel.get("prev_verified") is not True:
+            errors.append("runtime carousel must verify both next and previous transitions")
+    return _gate("FAIL" if errors else "PASS", errors)
 
 
 def validate_state(state: Any) -> dict[str, Any]:
@@ -308,23 +324,24 @@ def validate_state(state: Any) -> dict[str, Any]:
         return {"overall_status": "FAIL", "gates": gates}
     assert isinstance(state, dict)
     gates["SCHEMA_GATE"] = _gate("PASS")
-    gates["CHANNEL_MODULE_BUDGET_GATE"] = _channel_budget(state, indexes["modules"])
-    gates["APPROVAL_PROVENANCE_GATE"] = _approval_gate(state, indexes)
-    gates["MODULE_ORIGIN_GATE"] = _module_origin(state, indexes)
-    gates["TRANSFORM_AUTH_GATE"] = _transform_gate(state, indexes)
-    gates["ASSET_SLOT_GATE"] = _asset_slot_gate(indexes)
-    gates["PRODUCTION_FREEZE_GATE"] = _production_freeze(state, indexes)
-    gates["EVIDENCE_RECONCILIATION_GATE"] = _early_evidence_gate(state)
+    gates["CHANNEL_MODULE_BUDGET_GATE"] = _core._channel_budget(state, indexes["modules"])
+    gates["APPROVAL_PROVENANCE_GATE"] = _core._approval_gate(state, indexes)
+    gates["MODULE_ORIGIN_GATE"] = _core._module_origin(state, indexes)
+    gates["TRANSFORM_AUTH_GATE"] = _core._transform_gate(state, indexes)
+    gates["ASSET_SLOT_GATE"] = _asset_slot_gate(state, indexes)
+    gates["PRODUCTION_FREEZE_GATE"] = _production_freeze_gate(state, indexes)
+    gates["EVIDENCE_RECONCILIATION_GATE"] = _core._early_evidence_gate(state)
     gates["PRE_DEMO_ASSET_GATE"] = _pre_demo_gate(state, indexes)
-    gates["FRONTEND_FIDELITY_GATE"] = _frontend_gate(state)
-    gates["DELIVERY_PARITY_GATE"] = _delivery_parity(indexes)
+    gates["FRONTEND_FIDELITY_GATE"] = _frontend_fidelity_gate(state, indexes)
+    gates["DEMO_RUNTIME_GATE"] = _demo_runtime_gate(state)
+    gates["DELIVERY_PARITY_GATE"] = _core._delivery_parity(indexes)
     statuses = {gate["status"] for gate in gates.values()}
     overall = "FAIL" if "FAIL" in statuses else "UNVERIFIED" if "UNVERIFIED" in statuses else "PASS"
-    return {"overall_status": overall, "gates": gates}
+    return {"overall_status": overall, "gates": gates, "note": "Global v0.3.3 fail-closed hard verification"}
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Validate global listing Delivery State")
+    parser = argparse.ArgumentParser(description="Validate Global listing Delivery State v0.3.3")
     parser.add_argument("state", type=Path)
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args()
