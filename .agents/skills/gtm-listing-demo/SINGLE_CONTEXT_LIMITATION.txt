@@ -1,0 +1,5 @@
+The gtm-listing-demo one-install compatibility archive embeds listing-planning, listing-production, listing-hardening, and listing-evidence-auditor under one user-facing Skill.
+
+This packaging preserves formal stage boundaries and Context Firewall behavior, but it is still one model context. Loading the embedded listing-evidence-auditor does not create independent semantic review by itself.
+
+Deterministic physical-file, hash, schema, approval-binding, scope, and delivery checks may run normally. Semantic visual-role evidence that requires independence remains UNVERIFIED / HUMAN_REVIEW_REQUIRED unless resolved by an appropriate human reviewer or a genuinely independent model/context.
