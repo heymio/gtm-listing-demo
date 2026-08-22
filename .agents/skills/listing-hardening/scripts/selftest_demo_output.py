@@ -34,9 +34,26 @@ def valid_demo() -> str:
 </body></html>"""
 
 
+def static_demo() -> str:
+    return """<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+*{box-sizing:border-box} img{display:block;max-width:100%;height:auto}.demo{width:100%;max-width:1200px;margin:auto}@media(max-width:600px){.demo{padding:8px}}
+</style></head><body><main class="demo"><section>
+<img alt="static product visual" src="data:image/png;base64,iVBORw0KGgo=">
+</section></main></body></html>"""
+
+
 def test_valid_standalone_demo_passes_static_contract() -> None:
     result = load_validator().validate_html_text(valid_demo())
     assert result["status"] == "PASS", result
+
+
+def test_static_demo_without_planned_carousel_can_pass() -> None:
+    result = load_validator().validate_html_text(static_demo())
+    assert result["status"] == "PASS", result
+    assert result["checks"]["carousel_contract"] == "N/A"
 
 
 def test_final_delivery_path_must_be_html_not_zip() -> None:
@@ -87,9 +104,17 @@ def test_mobile_contract_requires_viewport_breakpoint_and_responsive_images() ->
     assert "viewport" in folded and ("responsive" in folded or "@media" in folded)
 
 
-def test_carousel_requires_controls_slides_and_inline_click_wiring() -> None:
+def test_carousel_requires_controls_slides_and_inline_click_wiring_when_present() -> None:
     validator = load_validator()
     html = valid_demo().replace("addEventListener('click'", "noop('click'")
+    result = validator.validate_html_text(html)
+    assert result["status"] == "FAIL"
+    assert any("carousel" in item.casefold() for item in result["errors"])
+
+
+def test_partial_carousel_markup_still_fails() -> None:
+    validator = load_validator()
+    html = static_demo().replace("<section>", "<section data-carousel>", 1)
     result = validator.validate_html_text(html)
     assert result["status"] == "FAIL"
     assert any("carousel" in item.casefold() for item in result["errors"])
