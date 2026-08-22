@@ -12,6 +12,7 @@
 - Conditional claims retain their conditions.
 - Current price, availability, certification/testing/performance/service terms are verified before formal release when relevant.
 - Unsupported absolute/comparative/superlative claims are rejected.
+- `PROOF_VISUAL` assets carry exact claim IDs, fact text, authoritative source IDs, and trusted review covering those exact claims.
 
 ## Channel QA
 
@@ -19,6 +20,7 @@
 - Module/slot count is checked against current verified capability evidence rather than a generic hard-coded ceiling.
 - Platform-generated regions are not treated as brand-controlled.
 - Platform Capability evidence remains separate from Frontend Visual evidence.
+- Channel-native frontend fidelity is evidence-backed and exact-payload approved; otherwise use an explicitly labeled Content Review Demo.
 
 ## Market and locale QA
 
@@ -38,7 +40,10 @@ Review the ordered set for scene/composition/tone/product-scale/proof-form repet
 ## Evidence / Hardening QA
 
 - Creative `USER_APPROVED` is not treated as evidence verification.
-- Real final files are fingerprinted from disk.
+- Required final IDs are recomputed from all authoritative plan/implementation/contract/blocker sources; one list cannot override the rest.
+- Demo required set is non-empty and mandatory pre-Demo audit cannot be disabled by caller state.
+- Production Freeze has no blockers/revisions, current Set QA, `ready_for_hardening=true`, and exact `asset_id -> candidate_id -> output_ref` bindings.
+- Real final files are fingerprinted from disk and supported raster formats pass Pillow verify/load.
 - Approval binds exact current SHA, role, and scope.
 - Duplicate identifiers fail before dictionary/index overwrite.
 - Same-context semantic review does not self-certify independence.
@@ -48,22 +53,29 @@ Review the ordered set for scene/composition/tone/product-scale/proof-form repet
 
 - Final project deliverable is one `.html` file, not a Demo ZIP plus assets folder.
 - Runtime images/resources are portable embedded `data:` resources; external/local dependencies are rejected.
-- Mixed/external `srcset`, session-only literal `blob:` resources, external CSS/JS, and CSS imports/local URLs are rejected.
+- Mixed/external `srcset`, session-only literal `blob:` resources, external CSS/JS, SVG external refs, CSS imports, and external/local `url(...)` references including inline styles are rejected.
 - Responsive viewport, width breakpoint, and responsive image behavior are present.
-- If a carousel is present, controls/slides/inline click wiring are complete; a static page is allowed when no carousel is planned.
+- Static pages without carousel remain valid.
+- If a carousel is present, static structure is checked but interaction remains `RUNTIME_REQUIRED`; keyword presence or unused JavaScript text is never hard PASS.
 
 ## Runtime QA
 
-At 1440px desktop and 390px mobile verify:
+Browser runtime evidence is bound to the exact final HTML SHA. It must observe zero external network requests and verify at 1440px desktop and 390px mobile:
 
 - no horizontal overflow;
 - no broken images;
 - no clipped primary copy/controls;
-- correct content order and image/text pairing;
-- all planned interactions;
+- actual next/previous carousel state transitions when carousel exists;
 - Review Mode does not corrupt Consumer Mode.
 
-If browser/runtime verification cannot be performed, mobile/interaction QA remains `BLOCKED`.
+If Playwright/Chromium verification cannot be performed, `DEMO_RUNTIME_GATE` remains `UNVERIFIED/BLOCKED`.
+
+## Distribution / release QA
+
+- one-install and Codex bundles are deterministic for identical source trees;
+- packaging rejects symlink inputs and validates extracted packages;
+- release build validates the exact candidate SHA under read-only permissions;
+- publish job does not check out or execute repository code, receives write permission only when publishing, rechecks current main and checksums, handles absent tags safely, and targets the repository explicitly.
 
 ## Domain leakage QA
 
