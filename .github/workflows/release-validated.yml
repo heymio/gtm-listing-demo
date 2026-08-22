@@ -1,0 +1,193 @@
+name: Release validated gtm-listing-demo
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      run_validation: ${{ steps.meta.outputs.run_validation }}
+      publish: ${{ steps.meta.outputs.publish }}
+      tag: ${{ steps.meta.outputs.tag }}
+      validated_sha: ${{ steps.meta.outputs.validated_sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Pin exact validation SHA and publication eligibility
+        id: meta
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VALIDATED_SHA: ${{ github.sha }}
+          EVENT_NAME: ${{ github.event_name }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "validated_sha=$VALIDATED_SHA" >> "$GITHUB_OUTPUT"
+          echo "run_validation=true" >> "$GITHUB_OUTPUT"
+          VERSION="$(cat VERSION)"
+          test "$VERSION" = "0.3.3"
+          TAG="v$VERSION"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            echo "PR validation mode: full read-only release build will run; publication is disabled."
+            exit 0
+          fi
+
+          CURRENT_MAIN="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/heads/main" --jq '.object.sha')"
+          if [ "$CURRENT_MAIN" != "$VALIDATED_SHA" ]; then
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            echo "Push SHA is stale; current main is $CURRENT_MAIN"
+            exit 0
+          fi
+
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            echo "Release $TAG already exists; publication is idempotent."
+            exit 0
+          fi
+          echo "publish=true" >> "$GITHUB_OUTPUT"
+
+      - name: Install hard-verification runtime dependencies
+        if: steps.meta.outputs.run_validation == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --disable-pip-version-check --no-input Pillow playwright
+          python3 -m playwright install --with-deps chromium
+
+      - name: Validate exact release SHA
+        if: steps.meta.outputs.run_validation == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 .agents/skills/gtm-listing-demo/scripts/selftest_fail_closed_v033.py
+          python3 .agents/skills/gtm-listing-demo/scripts/validate_skill.py
+          python3 .agents/skills/gtm-listing-demo/scripts/selftest_router.py
+          python3 .agents/skills/listing-planning/scripts/selftest_planning.py
+          python3 .agents/skills/listing-production/scripts/selftest_production.py
+          python3 .agents/skills/listing-hardening/scripts/selftest_hardening.py
+          python3 .agents/skills/listing-hardening/scripts/selftest_demo_output.py
+          python3 .agents/skills/listing-hardening/scripts/selftest_demo_runtime_v033.py
+          python3 .agents/skills/listing-evidence-auditor/scripts/selftest_auditor.py
+          python3 .agents/skills/listing-evidence-auditor/scripts/selftest_image_decode_v033.py
+          python3 .agents/skills/gtm-listing-demo/scripts/selftest_project_state_validator.py
+          python3 .agents/skills/gtm-listing-demo/scripts/selftest_distribution_v033.py
+          python3 .agents/skills/gtm-listing-demo/scripts/validate_overlay.py
+
+      - name: Build deterministic release archives
+        if: steps.meta.outputs.run_validation == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 .agents/skills/gtm-listing-demo/scripts/package_skill.py
+          COMPAT_FIRST="$(sha256sum dist/gtm-listing-demo.skill.zip | awk '{print $1}')"
+          python3 .agents/skills/gtm-listing-demo/scripts/package_skill.py
+          COMPAT_SECOND="$(sha256sum dist/gtm-listing-demo.skill.zip | awk '{print $1}')"
+          test "$COMPAT_FIRST" = "$COMPAT_SECOND"
+
+          python3 scripts/package_codex_bundle.py
+          CODEX_FIRST="$(sha256sum dist/gtm-listing-demo-codex-bundle.zip | awk '{print $1}')"
+          python3 scripts/package_codex_bundle.py
+          CODEX_SECOND="$(sha256sum dist/gtm-listing-demo-codex-bundle.zip | awk '{print $1}')"
+          test "$CODEX_FIRST" = "$CODEX_SECOND"
+
+          python3 -m zipfile -l dist/gtm-listing-demo.skill.zip >/dev/null
+          python3 -m zipfile -l dist/gtm-listing-demo-codex-bundle.zip >/dev/null
+
+      - name: Create download-local checksums and release metadata
+        if: steps.meta.outputs.run_validation == 'true'
+        env:
+          VALIDATED_SHA: ${{ steps.meta.outputs.validated_sha }}
+          TAG: ${{ steps.meta.outputs.tag }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          (cd dist && sha256sum \
+            gtm-listing-demo.skill.zip \
+            gtm-listing-demo-codex-bundle.zip \
+            > SHA256SUMS.txt)
+          cp docs/release-notes-v0.3.3.md dist/RELEASE_NOTES.md
+          jq -n \
+            --arg validated_sha "$VALIDATED_SHA" \
+            --arg tag "$TAG" \
+            '{validated_sha:$validated_sha,tag:$tag}' \
+            > dist/RELEASE_METADATA.json
+
+      - uses: actions/upload-artifact@v4
+        if: steps.meta.outputs.run_validation == 'true'
+        with:
+          name: release-candidate-${{ steps.meta.outputs.tag }}-${{ steps.meta.outputs.validated_sha }}
+          path: |
+            dist/gtm-listing-demo.skill.zip
+            dist/gtm-listing-demo-codex-bundle.zip
+            dist/SHA256SUMS.txt
+            dist/RELEASE_NOTES.md
+            dist/RELEASE_METADATA.json
+
+  publish:
+    needs: build
+    if: github.event_name == 'push' && needs.build.outputs.publish == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-candidate-${{ needs.build.outputs.tag }}-${{ needs.build.outputs.validated_sha }}
+          path: release
+
+      - name: Verify exact candidate and publish immutable Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VALIDATED_SHA: ${{ needs.build.outputs.validated_sha }}
+          TAG: ${{ needs.build.outputs.tag }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          META_SHA="$(jq -r '.validated_sha' release/RELEASE_METADATA.json)"
+          META_TAG="$(jq -r '.tag' release/RELEASE_METADATA.json)"
+          test "$META_SHA" = "$VALIDATED_SHA"
+          test "$META_TAG" = "$TAG"
+
+          CURRENT_MAIN="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/heads/main" --jq '.object.sha')"
+          test "$CURRENT_MAIN" = "$VALIDATED_SHA"
+          (cd release && sha256sum -c SHA256SUMS.txt)
+
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release $TAG already exists; no second publication."
+            exit 0
+          fi
+
+          if TAG_SHA="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${TAG}" --jq '.object.sha' 2>/dev/null)"; then
+            if [ "$TAG_SHA" != "$VALIDATED_SHA" ]; then
+              echo "Existing tag $TAG points to unexpected SHA $TAG_SHA" >&2
+              exit 1
+            fi
+          fi
+
+          gh release create "$TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$VALIDATED_SHA" \
+            --title "$TAG — Global Fail-Closed Hard Verification" \
+            --notes-file release/RELEASE_NOTES.md \
+            release/gtm-listing-demo.skill.zip \
+            release/gtm-listing-demo-codex-bundle.zip \
+            release/SHA256SUMS.txt
