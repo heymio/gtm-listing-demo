@@ -1,12 +1,97 @@
 {
   "schema_version": "0.2",
-  "channel": {"id":"marketplace-example","capabilities":{"declared_max_modules":5}},
+  "channel": {
+    "id": "marketplace-example",
+    "capabilities": {
+      "declared_max_modules": 6
+    }
+  },
   "approval_events": [],
-  "assets": [],
-  "locked_module_plan": {"status":"LOCKED","approval_id":null,"plan_hash":null,"modules":[]},
-  "asset_slot_contract": [],
-  "implementation": {"plan_hash":null,"slots":[]},
-  "audit_checkpoints": {"pre_9_required":true},
-  "production_freeze": {"expected_assets":0,"user_approved_assets":[],"approved_output_refs":[]},
-  "frontend_fidelity": {"required":false,"status":"N/A","reference_ref":null}
+  "assets": [
+    {
+      "asset_id": "G01",
+      "canonical_source": "assets/G01.png",
+      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "role": "gallery-feature",
+      "page_offer_scope": "example-offer",
+      "allowed_slots": ["gallery-01"],
+      "status": "LOCKED"
+    }
+  ],
+  "locked_module_plan": {
+    "status": "LOCKED",
+    "approval_id": "PLAN-APPROVAL",
+    "plan_hash": "RECOMPUTE_WITH_CANONICAL_HASH",
+    "modules": [
+      {
+        "module_id": "M01",
+        "native_type": "image-copy",
+        "interaction": "static",
+        "asset_ids": ["G01"],
+        "approved_stage": "7"
+      }
+    ]
+  },
+  "asset_slot_contract": [
+    {
+      "slot_id": "gallery-01",
+      "module_id": "M01",
+      "required_asset_ids": ["G01"]
+    }
+  ],
+  "implementation": {
+    "plan_hash": "RECOMPUTE_WITH_CANONICAL_HASH",
+    "slots": [
+      {
+        "slot_id": "gallery-01",
+        "module_id": "M01",
+        "native_type": "image-copy",
+        "interaction": "static",
+        "asset_ids": ["G01"]
+      }
+    ]
+  },
+  "audit_checkpoints": {"pre_9_required": true},
+  "production_freeze": {
+    "expected_assets": 1,
+    "required_asset_ids": ["G01"],
+    "user_approved_assets": ["G01"],
+    "blocked_assets": [],
+    "revision_pending": [],
+    "approved_outputs": {
+      "G01": {"candidate_id": "G01-v2", "output_ref": "file:G01-v2.png"}
+    },
+    "set_qa_status": "CLEAR",
+    "ready_for_hardening": true
+  },
+  "auditor_evidence": {
+    "checkpoint": "pre-9",
+    "asset_set_gate": {"status": "PASS", "messages": []},
+    "assets": {
+      "G01": {
+        "physical_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "effective_status": "VERIFIED"
+      }
+    }
+  },
+  "frontend_fidelity": {
+    "mode": "CONTENT_REVIEW",
+    "evidence_refs": ["frontend-reference:current"],
+    "content_review_labeled": true,
+    "channel_native_claimed": false,
+    "approval_id": "FRONTEND-APPROVAL"
+  },
+  "demo": {
+    "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+  },
+  "demo_runtime_evidence": {
+    "validator": "browser-runtime",
+    "demo_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+    "network_requests": 0,
+    "viewports": {
+      "1440": {"horizontal_overflow": false, "broken_images": 0, "clipped_primary_elements": 0},
+      "390": {"horizontal_overflow": false, "broken_images": 0, "clipped_primary_elements": 0}
+    },
+    "carousel": {"present": false, "next_verified": true, "prev_verified": true}
+  }
 }
