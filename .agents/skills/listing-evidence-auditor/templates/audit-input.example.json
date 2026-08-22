@@ -1,0 +1,10 @@
+{
+  "audit_version": "1",
+  "project_id": "example",
+  "checkpoint": "pre-demo",
+  "assets": [{"asset_id":"G1","path":"assets/G1.png","claimed_role":"gallery-native","allowed_slots":["gallery-01"],"claimed_approval_event_id":null,"claimed_parent_asset_id":null,"claimed_transform":null}],
+  "slots": [{"slot_id":"gallery-01","required_asset_ids":["G1"]}],
+  "approval_events": [],
+  "prior_locked_assets": [],
+  "expected_visual_roles": [{"asset_id":"G1","role":"gallery-native"}]
+}
