@@ -1,164 +1,140 @@
 #!/usr/bin/env python3
-"""Regression tests for generic listing hardening."""
+"""Global listing-hardening regressions including v0.3.3 fail-closed gates."""
 
 from __future__ import annotations
 
 import importlib.util
+import sys
 from pathlib import Path
 
-SKILL_DIR = Path(__file__).resolve().parents[1]
-VALIDATOR = SKILL_DIR / "scripts" / "validate_delivery_state.py"
+SCRIPT_DIR = Path(__file__).resolve().parent
+sys.path.insert(0, str(SCRIPT_DIR))
+LEGACY = SCRIPT_DIR / "selftest_hardening_legacy.py"
+SPEC = importlib.util.spec_from_file_location("global_hardening_legacy_tests", LEGACY)
+assert SPEC and SPEC.loader
+legacy = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(legacy)
+
+import validate_delivery_state as validator  # noqa: E402
+
+_original_minimal_state = legacy.minimal_state
 
 
-def load_validator():
-    assert VALIDATOR.is_file(), "validate_delivery_state.py must exist"
-    spec = importlib.util.spec_from_file_location("global_hardening_validator", VALIDATOR)
-    assert spec and spec.loader
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
-
-
-def minimal_state() -> dict:
-    validator = load_validator()
-    asset_payload = {
-        "asset_id": "A01",
-        "canonical_source": "assets/a01.png",
-        "sha256": "a" * 64,
-        "role": "enhanced-content",
-        "page_offer_scope": ["single"],
-        "allowed_slots": ["M01"],
+def _valid_frontend(state: dict) -> dict:
+    value = {
+        "mode": "CONTENT_REVIEW",
+        "evidence_refs": ["frontend-ref:generic"],
+        "shell_supported": None,
+        "section_order_supported": None,
+        "regions_distinguished": None,
+        "desktop_structure_known": None,
+        "mobile_behavior": None,
+        "interactions_supported": None,
+        "content_regions_verified": None,
+        "unsupported_ui_fabricated": None,
+        "content_review_labeled": True,
+        "channel_native_claimed": False,
     }
-    asset_hash = validator.canonical_hash(asset_payload)
-    module = {
-        "module_id": "M01",
-        "native_type": "full-image",
-        "interaction": "static",
-        "asset_ids": ["A01"],
-        "approved_stage": "7",
+    payload = validator._frontend_payload(value)
+    approval_id = "AP-FRONTEND"
+    state["approval_events"].append({
+        "approval_id": approval_id,
+        "actor": "user",
+        "source_ref": "checkpoint:frontend",
+        "scope": "frontend_fidelity",
+        "stage": "8.5",
+        "approved_hash": validator.canonical_hash(payload),
+    })
+    value["approval_id"] = approval_id
+    return value
+
+
+def _minimal_state_v033() -> dict:
+    state = _original_minimal_state()
+    state["audit_checkpoints"] = {"pre_9_required": True}
+    state["production_freeze"] = {
+        "expected_assets": 1,
+        "required_asset_ids": ["A01"],
+        "user_approved_assets": ["A01"],
+        "blocked_assets": [],
+        "revision_pending": [],
+        "approved_outputs": {"A01": {"candidate_id": "A01-v1", "output_ref": "file:a01"}},
+        "set_qa_status": "CLEAR",
+        "ready_for_hardening": True,
     }
-    plan_hash = validator.canonical_hash({"modules": [module]})
-    return {
-        "schema_version": "0.2",
-        "channel": {
-            "id": "marketplace-example",
-            "capabilities": {"declared_max_modules": 5},
+    state["frontend_fidelity"] = _valid_frontend(state)
+    state["demo"] = {"sha256": "d" * 64}
+    state["demo_runtime_evidence"] = {
+        "validator": "browser-runtime",
+        "demo_sha256": "d" * 64,
+        "network_requests": 0,
+        "viewports": {
+            "1440": {"horizontal_overflow": False, "broken_images": 0, "clipped_primary_elements": 0},
+            "390": {"horizontal_overflow": False, "broken_images": 0, "clipped_primary_elements": 0},
         },
-        "approval_events": [
-            {"approval_id": "AP-ASSET", "actor": "user", "source_ref": "checkpoint:asset", "scope": "asset_lock:A01", "stage": "8", "approved_hash": asset_hash},
-            {"approval_id": "AP-PLAN", "actor": "user", "source_ref": "checkpoint:plan", "scope": "module_plan", "stage": "7", "approved_hash": plan_hash},
-        ],
-        "assets": [{**asset_payload, "status": "LOCKED", "approval_id": "AP-ASSET"}],
-        "locked_module_plan": {"status": "LOCKED", "approval_id": "AP-PLAN", "plan_hash": plan_hash, "modules": [module]},
-        "asset_slot_contract": [{"slot_id": "M01", "module_id": "M01", "required_asset_ids": ["A01"], "interaction": "static"}],
-        "implementation": {"plan_hash": plan_hash, "slots": [{"slot_id": "M01", "module_id": "M01", "native_type": "full-image", "interaction": "static", "asset_ids": ["A01"]}]},
-        "audit_checkpoints": {"pre_9_required": True},
-        "production_freeze": {"expected_assets": 1, "user_approved_assets": ["A01"], "approved_output_refs": ["file:a01"]},
-        "auditor_evidence": {
-            "checkpoint": "pre-demo",
-            "independent_semantic": True,
-            "asset_set_gate": {"status": "PASS", "messages": []},
-            "assets": {"A01": {"physical_sha256": "a" * 64, "effective_status": "VERIFIED"}},
-        },
-        "frontend_fidelity": {"required": False, "status": "N/A", "reference_ref": None},
+        "carousel": {"present": False, "next_verified": None, "prev_verified": None},
     }
+    return state
 
 
-def test_hardening_files_and_contract_exist() -> None:
-    required = [
-        SKILL_DIR / "SKILL.md",
-        VALIDATOR,
-        SKILL_DIR / "references" / "asset-integrity.md",
-        SKILL_DIR / "references" / "executable-gates.md",
-        SKILL_DIR / "references" / "frontend-fidelity.md",
-        SKILL_DIR / "references" / "final-qa.md",
-        SKILL_DIR / "references" / "demo-output.md",
-    ]
-    missing = [str(path.relative_to(SKILL_DIR)) for path in required if not path.is_file()]
-    assert missing == [], missing
+legacy.minimal_state = _minimal_state_v033
 
 
-def test_valid_generic_delivery_state_passes_core_gates() -> None:
-    validator = load_validator()
-    result = validator.validate_state(minimal_state())
-    assert result["gates"]["SCHEMA_GATE"]["status"] == "PASS"
+def test_valid_v033_delivery_state_passes_all_mandatory_final_gates() -> None:
+    result = validator.validate_state(_minimal_state_v033())
+    assert result["overall_status"] == "PASS", result
     for gate in [
-        "CHANNEL_MODULE_BUDGET_GATE",
-        "APPROVAL_PROVENANCE_GATE",
-        "MODULE_ORIGIN_GATE",
-        "ASSET_SLOT_GATE",
-        "PRODUCTION_FREEZE_GATE",
-        "PRE_DEMO_ASSET_GATE",
-        "DELIVERY_PARITY_GATE",
+        "PRODUCTION_FREEZE_GATE", "PRE_DEMO_ASSET_GATE",
+        "FRONTEND_FIDELITY_GATE", "DEMO_RUNTIME_GATE", "DELIVERY_PARITY_GATE",
     ]:
         assert result["gates"][gate]["status"] == "PASS", (gate, result["gates"][gate])
 
 
-def test_channel_budget_uses_declared_current_capability_not_site_hardcode() -> None:
-    validator = load_validator()
-    state = minimal_state()
-    state["channel"]["id"] = "retailer-custom"
-    state["channel"]["capabilities"]["declared_max_modules"] = 0
+def test_missing_frontend_or_runtime_evidence_cannot_pass() -> None:
+    for key, gate in [("frontend_fidelity", "FRONTEND_FIDELITY_GATE"), ("demo_runtime_evidence", "DEMO_RUNTIME_GATE")]:
+        state = _minimal_state_v033()
+        state.pop(key)
+        result = validator.validate_state(state)
+        assert result["gates"][gate]["status"] != "PASS", result
+        assert result["overall_status"] != "PASS", result
+
+
+def test_channel_native_frontend_requires_evidence_backed_capabilities() -> None:
+    state = _minimal_state_v033()
+    state["frontend_fidelity"] = {
+        "mode": "CHANNEL_NATIVE",
+        "evidence_refs": ["frontend-ref:native"],
+        "shell_supported": False,
+        "section_order_supported": True,
+        "regions_distinguished": True,
+        "desktop_structure_known": True,
+        "mobile_behavior": "KNOWN",
+        "interactions_supported": True,
+        "content_regions_verified": True,
+        "unsupported_ui_fabricated": False,
+        "approval_id": "AP-FRONTEND",
+    }
     result = validator.validate_state(state)
-    assert result["gates"]["CHANNEL_MODULE_BUDGET_GATE"]["status"] == "FAIL"
+    assert result["gates"]["FRONTEND_FIDELITY_GATE"]["status"] == "FAIL", result
 
 
-def test_production_freeze_requires_exact_required_asset_ids() -> None:
-    validator = load_validator()
-    state = minimal_state()
-    state["production_freeze"]["user_approved_assets"] = ["WRONG"]
+def test_runtime_carousel_requires_actual_both_directions() -> None:
+    state = _minimal_state_v033()
+    state["demo_runtime_evidence"]["carousel"] = {"present": True, "next_verified": True, "prev_verified": False}
     result = validator.validate_state(state)
-    assert result["gates"]["PRODUCTION_FREEZE_GATE"]["status"] == "FAIL"
-
-
-def test_pre_demo_gate_requires_current_exact_hash_evidence() -> None:
-    validator = load_validator()
-    state = minimal_state()
-    state["auditor_evidence"]["assets"]["A01"]["physical_sha256"] = "b" * 64
-    result = validator.validate_state(state)
-    assert result["gates"]["PRE_DEMO_ASSET_GATE"]["status"] == "FAIL"
-
-
-def test_module_origin_and_delivery_parity_reject_implementation_drift() -> None:
-    validator = load_validator()
-    state = minimal_state()
-    state["implementation"]["slots"][0]["native_type"] = "carousel"
-    result = validator.validate_state(state)
-    assert result["gates"]["MODULE_ORIGIN_GATE"]["status"] == "FAIL" or result["gates"]["DELIVERY_PARITY_GATE"]["status"] == "FAIL"
-
-
-def test_frontend_fidelity_blocks_native_claim_without_reference() -> None:
-    validator = load_validator()
-    state = minimal_state()
-    state["frontend_fidelity"] = {"required": True, "status": "UNVERIFIED", "reference_ref": None}
-    result = validator.validate_state(state)
-    assert result["gates"]["FRONTEND_FIDELITY_GATE"]["status"] == "UNVERIFIED"
-
-
-def test_malformed_or_duplicate_state_fails_schema_without_throwing() -> None:
-    validator = load_validator()
-    malformed = {"schema_version": "0.2", "channel": [], "assets": "bad", "approval_events": {}}
-    result = validator.validate_state(malformed)
-    assert result["gates"]["SCHEMA_GATE"]["status"] == "FAIL"
-    state = minimal_state()
-    state["assets"].append(dict(state["assets"][0]))
-    result = validator.validate_state(state)
-    assert result["gates"]["SCHEMA_GATE"]["status"] == "FAIL"
-    assert any("duplicate" in m.casefold() for m in result["gates"]["SCHEMA_GATE"]["messages"])
-
-
-def test_hardening_core_has_no_marketplace_specific_defaults() -> None:
-    paths = [SKILL_DIR / "SKILL.md"] + sorted((SKILL_DIR / "references").glob("*.md"))
-    joined = "\n".join(path.read_text(encoding="utf-8") for path in paths if path.is_file()).casefold()
-    for forbidden in ["amazon.co.jp", "switchbot", "light bars", "s30 mini"]:
-        assert forbidden not in joined
+    assert result["gates"]["DEMO_RUNTIME_GATE"]["status"] == "FAIL", result
 
 
 def main() -> int:
-    tests = [value for name, value in globals().items() if name.startswith("test_") and callable(value)]
-    for test in tests:
+    skip = {"test_frontend_fidelity_blocks_native_claim_without_reference"}
+    legacy_tests = [
+        value for name, value in vars(legacy).items()
+        if name.startswith("test_") and callable(value) and name not in skip
+    ]
+    current_tests = [value for name, value in globals().items() if name.startswith("test_") and callable(value)]
+    for test in legacy_tests + current_tests:
         test()
-    print(f"PASS: {len(tests)} global-hardening tests")
+    print(f"PASS: {len(legacy_tests) + len(current_tests)} global-hardening tests (v0.3.3)")
     return 0
 
 
