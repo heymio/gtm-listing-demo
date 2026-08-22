@@ -18,6 +18,8 @@ jobs:
       - run: python .agents/skills/listing-planning/scripts/selftest_planning.py
       - run: python .agents/skills/listing-production/scripts/selftest_production.py
       - run: python .agents/skills/listing-evidence-auditor/scripts/selftest_auditor.py
+      - run: python .agents/skills/listing-hardening/scripts/selftest_hardening.py
+      - run: python .agents/skills/listing-hardening/scripts/selftest_demo_output.py
       - run: python .agents/skills/gtm-listing-demo/scripts/package_skill.py
       - uses: actions/upload-artifact@v4
         with:
