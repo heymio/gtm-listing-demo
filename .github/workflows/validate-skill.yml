@@ -15,6 +15,7 @@ jobs:
           python-version: "3.12"
       - run: python .agents/skills/gtm-listing-demo/scripts/validate_skill.py
       - run: python .agents/skills/gtm-listing-demo/scripts/selftest_router.py
+      - run: python .agents/skills/listing-planning/scripts/selftest_planning.py
       - run: python .agents/skills/gtm-listing-demo/scripts/package_skill.py
       - uses: actions/upload-artifact@v4
         with:
