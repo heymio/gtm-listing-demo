@@ -6,44 +6,46 @@ The final project Demo is delivered as **one single standalone HTML file** such 
 
 Do not deliver the project Demo as a ZIP and do not require an adjacent `assets` folder. Distribution/install ZIPs are separate from the user-facing project Demo.
 
-## Standalone requirements
+## Standalone static requirements
 
-- Raster images/resources used at runtime are physically embedded as portable `data:` URIs; inline SVG is allowed.
-- CSS is inline. No external/local stylesheet or `@import` dependency.
+- Runtime images/resources are physically embedded as portable `data:` URIs; inline SVG is allowed, but external/local SVG `<image>/<use>` references are not.
+- CSS is inline. No external/local stylesheet, `@import`, or external/local `url(...)` dependency, including inline `style` attributes.
 - JavaScript is inline. No `<script src>` dependency.
 - Literal session-only `blob:` resources are not portable and are rejected.
 - `<img srcset>` / `<source srcset>` may contain only embedded image candidates.
-- CSS `url(...)` and media resources must not depend on adjacent files or network assets.
+- Media resources must not depend on adjacent files or network assets.
 - Responsive viewport and width breakpoint are required.
 - Images use a responsive max-width contract.
 
-Run the static validator on the exact final file:
+Run the static preflight on the exact final file:
 
 ```bash
-python .agents/skills/listing-hardening/scripts/validate_demo_html.py <project>-listing-demo.html --json
+python3 .agents/skills/listing-hardening/scripts/validate_demo_html.py <project>-listing-demo.html --json
 ```
 
-A non-PASS result blocks delivery.
+A non-PASS result blocks delivery. Static PASS proves portability/structure only; it does not prove interaction behavior.
 
 ## Carousel
 
-When carousel interaction is planned, the final HTML needs a carousel root, at least two slides, previous/next controls, and inline click wiring. Static verification is necessary but not sufficient; exercise both directions in a browser.
+A page with no planned carousel may remain a valid static Demo. When carousel interaction is present, the static preflight requires a carousel root, at least two slides, previous/next controls, and coherent inline structure, but `carousel_contract` remains runtime-required. JavaScript keywords or unused handler-like strings never constitute hard interaction proof.
 
-## Runtime verification
+## Runtime hard verification
 
-Open the exact final file at:
+Run the exact final file through:
+
+```bash
+python3 .agents/skills/listing-hardening/scripts/validate_demo_runtime.py <project>-listing-demo.html --output runtime-evidence.json
+```
+
+Browser runtime verification uses Playwright/Chromium, observes and blocks external network requests, and binds evidence to the exact HTML SHA-256.
+
+It opens the Demo at:
 
 - **1440px** desktop;
 - **390px** mobile.
 
-At both widths verify:
+At both widths it verifies no horizontal overflow, no broken images, and no clipped primary copy/controls. When a carousel is present, the validator clicks next and previous and proves the visible state changes and returns.
 
-- no horizontal overflow;
-- no broken images;
-- no clipped primary copy or controls;
-- correct approved content order;
-- correct image/text pairing;
-- required carousel/tabs/other review interactions operate;
-- Review Mode does not corrupt Consumer Mode layout.
+Final Delivery State must bind this browser evidence to the exact Demo SHA through `DEMO_RUNTIME_GATE`.
 
-**If browser/runtime verification cannot be performed, mobile/interaction Demo QA is BLOCKED.** Do not claim PASS from source inspection alone.
+**If Playwright/Chromium runtime verification cannot be performed, runtime Demo QA remains `UNVERIFIED/BLOCKED`.** Do not claim PASS from source inspection alone.
