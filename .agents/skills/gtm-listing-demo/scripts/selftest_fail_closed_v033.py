@@ -141,10 +141,12 @@ def test_production_freeze_binds_asset_candidate_and_output_ref() -> None:
 
 def test_demo_runtime_is_a_canonical_gate() -> None:
     state = hardening_fixtures.minimal_state()
+    state.pop("demo_runtime_evidence", None)
     result = hardening.validate_state(state)
     assert "FRONTEND_FIDELITY_GATE" in result["gates"], result
     assert "DEMO_RUNTIME_GATE" in result["gates"], result
     assert result["gates"]["DEMO_RUNTIME_GATE"]["status"] != "PASS", result
+    assert result["overall_status"] != "PASS", result
 
 
 def test_truncated_png_is_not_physically_valid() -> None:
