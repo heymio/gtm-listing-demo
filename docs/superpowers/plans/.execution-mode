@@ -1,1 +1,0 @@
-Execution mode: inline via GitHub branch isolation and pull-request-triggered GitHub Actions because the local container cannot resolve github.com.
