@@ -35,9 +35,28 @@ jobs:
       - run: python3 .agents/skills/listing-evidence-auditor/scripts/selftest_auditor.py
       - run: python3 .agents/skills/listing-evidence-auditor/scripts/selftest_image_decode_v033.py
       - run: python3 .agents/skills/gtm-listing-demo/scripts/selftest_project_state_validator.py
+      - run: python3 .agents/skills/gtm-listing-demo/scripts/selftest_distribution_v033.py
       - run: python3 .agents/skills/gtm-listing-demo/scripts/validate_overlay.py
-      - run: python3 .agents/skills/gtm-listing-demo/scripts/package_skill.py
-      - run: python3 scripts/package_codex_bundle.py
+      - name: Build compatibility ZIP reproducibly
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 .agents/skills/gtm-listing-demo/scripts/package_skill.py
+          FIRST="$(sha256sum dist/gtm-listing-demo.skill.zip | awk '{print $1}')"
+          python3 .agents/skills/gtm-listing-demo/scripts/package_skill.py
+          SECOND="$(sha256sum dist/gtm-listing-demo.skill.zip | awk '{print $1}')"
+          test "$FIRST" = "$SECOND"
+          echo "compatibility_sha256=$SECOND"
+      - name: Build Codex bundle reproducibly
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/package_codex_bundle.py
+          FIRST="$(sha256sum dist/gtm-listing-demo-codex-bundle.zip | awk '{print $1}')"
+          python3 scripts/package_codex_bundle.py
+          SECOND="$(sha256sum dist/gtm-listing-demo-codex-bundle.zip | awk '{print $1}')"
+          test "$FIRST" = "$SECOND"
+          echo "codex_bundle_sha256=$SECOND"
       - run: python3 -m zipfile -l dist/gtm-listing-demo.skill.zip
       - run: python3 -m zipfile -l dist/gtm-listing-demo-codex-bundle.zip
       - uses: actions/upload-artifact@v4
