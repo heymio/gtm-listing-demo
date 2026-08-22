@@ -1,0 +1,1 @@
+Generic core must not hard-code Japan consumer rules, Amazon.co.jp limits, SwitchBot/private account facts, or product-specific pilot data.
