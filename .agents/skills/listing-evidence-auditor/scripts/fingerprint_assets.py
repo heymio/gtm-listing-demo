@@ -1,107 +1,212 @@
 #!/usr/bin/env python3
-"""Recompute physical identity for listing evidence assets from real files."""
+"""Global v0.3.3 strict physical fingerprinting and audit-packet validation."""
 
 from __future__ import annotations
 
 import argparse
-import hashlib
+import importlib.util
+import io
 import json
-import struct
+import zlib
 from pathlib import Path
 from typing import Any
 
+HERE = Path(__file__).resolve().parent
+LEGACY_PATH = HERE / "fingerprint_assets_legacy.py"
+SPEC = importlib.util.spec_from_file_location("global_listing_fingerprint_legacy", LEGACY_PATH)
+if SPEC is None or SPEC.loader is None:
+    raise RuntimeError(f"cannot load legacy fingerprint helpers: {LEGACY_PATH}")
+_legacy = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(_legacy)
 
-def extension_family(suffix: str) -> str | None:
-    value = suffix.lower().lstrip(".")
-    if value == "png": return "png"
-    if value in {"jpg", "jpeg"}: return "jpeg"
-    if value == "webp": return "webp"
-    return None
-
-
-def _jpeg_dimensions(data: bytes) -> tuple[int | None, int | None]:
-    if len(data) < 4 or not data.startswith(b"\xff\xd8"):
-        return None, None
-    sof_markers = {0xC0,0xC1,0xC2,0xC3,0xC5,0xC6,0xC7,0xC9,0xCA,0xCB,0xCD,0xCE,0xCF}
-    i = 2
-    while i + 1 < len(data):
-        if data[i] != 0xFF:
-            i += 1; continue
-        while i < len(data) and data[i] == 0xFF: i += 1
-        if i >= len(data): break
-        marker = data[i]; i += 1
-        if marker in {0xD8, 0xD9} or 0xD0 <= marker <= 0xD7: continue
-        if i + 2 > len(data): break
-        segment_length = int.from_bytes(data[i:i+2], "big")
-        if segment_length < 2 or i + segment_length > len(data): break
-        if marker in sof_markers and segment_length >= 7:
-            height = int.from_bytes(data[i+3:i+5], "big")
-            width = int.from_bytes(data[i+5:i+7], "big")
-            return width, height
-        i += segment_length
-    return None, None
+extension_family = _legacy.extension_family
+EVIDENCE_MODES = {"SOURCE_FAITHFUL", "CREATIVE_MOCK", "PROOF_VISUAL"}
 
 
-def _webp_dimensions(data: bytes) -> tuple[int | None, int | None]:
-    if len(data) < 30 or data[0:4] != b"RIFF" or data[8:12] != b"WEBP": return None, None
-    chunk = data[12:16]
-    if chunk == b"VP8X" and len(data) >= 30:
-        return 1 + int.from_bytes(data[24:27], "little"), 1 + int.from_bytes(data[27:30], "little")
-    if chunk == b"VP8L" and len(data) >= 25 and data[20] == 0x2F:
-        value = int.from_bytes(data[21:25], "little")
-        return (value & 0x3FFF) + 1, ((value >> 14) & 0x3FFF) + 1
-    if chunk == b"VP8 " and len(data) >= 30:
-        marker = data.find(b"\x9d\x01\x2a", 20, 30)
-        if marker >= 0 and marker + 7 <= len(data):
-            return int.from_bytes(data[marker+3:marker+5], "little") & 0x3FFF, int.from_bytes(data[marker+5:marker+7], "little") & 0x3FFF
-    return None, None
+def _png_integrity(data: bytes) -> list[str]:
+    errors: list[str] = []
+    if not data.startswith(b"\x89PNG\r\n\x1a\n"):
+        return ["invalid PNG signature"]
+    pos = 8
+    saw_ihdr = False
+    saw_idat = False
+    saw_iend = False
+    idat = bytearray()
+    while pos < len(data):
+        if pos + 12 > len(data):
+            errors.append("truncated PNG chunk")
+            break
+        length = int.from_bytes(data[pos:pos + 4], "big")
+        chunk_type = data[pos + 4:pos + 8]
+        end = pos + 12 + length
+        if end > len(data):
+            errors.append("truncated PNG chunk payload")
+            break
+        payload = data[pos + 8:pos + 8 + length]
+        expected_crc = int.from_bytes(data[pos + 8 + length:end], "big")
+        actual_crc = zlib.crc32(chunk_type + payload) & 0xFFFFFFFF
+        if expected_crc != actual_crc:
+            errors.append(f"PNG CRC mismatch in {chunk_type.decode('ascii', 'replace')}")
+        if not saw_ihdr:
+            if chunk_type != b"IHDR" or length != 13:
+                errors.append("PNG must start with a complete 13-byte IHDR")
+            else:
+                saw_ihdr = True
+        if chunk_type == b"IDAT":
+            saw_idat = True
+            idat.extend(payload)
+        if chunk_type == b"IEND":
+            if length != 0:
+                errors.append("PNG IEND must be empty")
+            saw_iend = True
+            pos = end
+            if pos != len(data):
+                errors.append("PNG contains trailing bytes after IEND")
+            break
+        pos = end
+    if not saw_ihdr:
+        errors.append("PNG IHDR missing")
+    if not saw_idat:
+        errors.append("PNG IDAT missing")
+    if not saw_iend:
+        errors.append("PNG IEND missing")
+    if idat:
+        try:
+            zlib.decompress(bytes(idat))
+        except zlib.error:
+            errors.append("PNG IDAT zlib stream is invalid")
+    return errors
+
+
+def _jpeg_integrity(data: bytes) -> list[str]:
+    errors: list[str] = []
+    if not data.startswith(b"\xff\xd8"):
+        return ["invalid JPEG SOI"]
+    if not data.endswith(b"\xff\xd9"):
+        errors.append("JPEG EOI marker missing")
+    family, width, height = _legacy.inspect_image_bytes(data)
+    if family != "jpeg" or not width or not height:
+        errors.append("JPEG SOF dimensions missing or invalid")
+    return errors
+
+
+def _webp_integrity(data: bytes) -> list[str]:
+    errors: list[str] = []
+    if len(data) < 12 or data[:4] != b"RIFF" or data[8:12] != b"WEBP":
+        return ["invalid WebP RIFF/WEBP header"]
+    declared = int.from_bytes(data[4:8], "little") + 8
+    if declared != len(data):
+        errors.append("WebP RIFF size does not match file length")
+    family, width, height = _legacy.inspect_image_bytes(data)
+    if family != "webp" or not width or not height:
+        errors.append("WebP dimensions missing or invalid")
+    return errors
+
+
+def _decoder_integrity(data: bytes, expected_family: str | None) -> list[str]:
+    try:
+        from PIL import Image, UnidentifiedImageError
+    except Exception as exc:
+        return [f"real image decoder unavailable (install Pillow): {exc}"]
+    format_map = {"PNG": "png", "JPEG": "jpeg", "WEBP": "webp"}
+    try:
+        with Image.open(io.BytesIO(data)) as image:
+            decoded_family = format_map.get((image.format or "").upper())
+            decoded_size = image.size
+            image.verify()
+        with Image.open(io.BytesIO(data)) as image:
+            image.load()
+    except (UnidentifiedImageError, OSError, ValueError, SyntaxError) as exc:
+        return [f"real image decode failed: {exc}"]
+    errors: list[str] = []
+    if decoded_family != expected_family:
+        errors.append(f"real decoder family mismatch: expected {expected_family!r}, decoded {decoded_family!r}")
+    width, height = decoded_size
+    if not isinstance(width, int) or width <= 0 or not isinstance(height, int) or height <= 0:
+        errors.append("real decoder returned invalid image dimensions")
+    return errors
 
 
 def inspect_image_bytes(data: bytes) -> tuple[str | None, int | None, int | None]:
-    if data.startswith(b"\x89PNG\r\n\x1a\n"):
-        if len(data) >= 24 and data[12:16] == b"IHDR":
-            width, height = struct.unpack(">II", data[16:24]); return "png", width, height
-        return "png", None, None
-    if data.startswith(b"\xff\xd8"):
-        width, height = _jpeg_dimensions(data); return "jpeg", width, height
-    if len(data) >= 12 and data[0:4] == b"RIFF" and data[8:12] == b"WEBP":
-        width, height = _webp_dimensions(data); return "webp", width, height
-    return None, None, None
+    return _legacy.inspect_image_bytes(data)
 
 
 def _require_unique_identifier(packet: dict[str, Any], list_key: str, id_key: str) -> None:
     items = packet.get(list_key, [])
-    if not isinstance(items, list): raise ValueError(f"{list_key} must be a list")
+    if not isinstance(items, list):
+        raise ValueError(f"{list_key} must be a list")
     seen: set[str] = set()
     for index, item in enumerate(items):
-        if not isinstance(item, dict): raise ValueError(f"{list_key}[{index}] must be an object")
+        if not isinstance(item, dict):
+            raise ValueError(f"{list_key}[{index}] must be an object")
         value = item.get(id_key)
-        if not isinstance(value, str) or not value: raise ValueError(f"{list_key}[{index}].{id_key} must be a non-empty string")
-        if value in seen: raise ValueError(f"duplicate {list_key}.{id_key}: {value}")
+        if not isinstance(value, str) or not value:
+            raise ValueError(f"{list_key}[{index}].{id_key} must be a non-empty string")
+        if value in seen:
+            raise ValueError(f"duplicate {list_key}.{id_key}: {value}")
         seen.add(value)
 
 
+def _validate_claim_bindings(asset: dict[str, Any], index: int) -> None:
+    mode = asset.get("evidence_mode", "SOURCE_FAITHFUL")
+    if mode not in EVIDENCE_MODES:
+        raise ValueError(f"assets[{index}].evidence_mode invalid: {mode!r}")
+    if mode != "PROOF_VISUAL":
+        return
+    bindings = asset.get("claim_bindings")
+    if not isinstance(bindings, list) or not bindings:
+        raise ValueError(f"assets[{index}] PROOF_VISUAL requires non-empty claim_bindings")
+    seen: set[str] = set()
+    for binding_index, binding in enumerate(bindings):
+        if not isinstance(binding, dict):
+            raise ValueError(f"assets[{index}].claim_bindings[{binding_index}] must be an object")
+        claim_id = binding.get("claim_id")
+        fact = binding.get("fact")
+        sources = binding.get("authoritative_source_ids")
+        if not isinstance(claim_id, str) or not claim_id.strip():
+            raise ValueError(f"assets[{index}].claim_bindings[{binding_index}].claim_id missing")
+        if claim_id in seen:
+            raise ValueError(f"duplicate claim_id in PROOF_VISUAL binding: {claim_id}")
+        seen.add(claim_id)
+        if not isinstance(fact, str) or not fact.strip():
+            raise ValueError(f"assets[{index}].claim_bindings[{binding_index}].fact missing")
+        if not isinstance(sources, list) or not sources or any(not isinstance(x, str) or not x.strip() for x in sources):
+            raise ValueError(f"assets[{index}].claim_bindings[{binding_index}].authoritative_source_ids must be non-empty")
+
+
 def validate_audit_packet(packet: dict[str, Any]) -> None:
-    if not isinstance(packet, dict): raise ValueError("audit packet root must be an object")
-    for list_key, id_key in [("assets","asset_id"),("approval_events","approval_event_id"),("prior_locked_assets","asset_id"),("slots","slot_id"),("expected_visual_roles","asset_id")]:
+    if not isinstance(packet, dict):
+        raise ValueError("audit packet root must be an object")
+    for list_key, id_key in [
+        ("assets", "asset_id"),
+        ("approval_events", "approval_event_id"),
+        ("prior_locked_assets", "asset_id"),
+        ("slots", "slot_id"),
+        ("expected_visual_roles", "asset_id"),
+    ]:
         _require_unique_identifier(packet, list_key, id_key)
+    for index, asset in enumerate(packet.get("assets", [])):
+        _validate_claim_bindings(asset, index)
 
 
 def fingerprint_asset(path: Path, project_root: Path) -> dict[str, Any]:
-    root = project_root.resolve(); resolved = path.resolve(); path_allowed = resolved == root or root in resolved.parents
-    result: dict[str, Any] = {"resolved_path":str(resolved),"exists":resolved.is_file(),"path_allowed":path_allowed,"sha256":None,"byte_size":None,"signature_family":None,"extension_family":extension_family(resolved.suffix),"width":None,"height":None,"errors":[]}
-    if not path_allowed:
-        result["errors"].append("path outside allowed project root"); return result
-    if not resolved.is_file():
-        result["errors"].append("missing file"); return result
-    data = resolved.read_bytes(); result["sha256"] = hashlib.sha256(data).hexdigest(); result["byte_size"] = len(data)
-    family, width, height = inspect_image_bytes(data); result["signature_family"] = family; result["width"] = width; result["height"] = height
-    extension = result["extension_family"]
-    if extension is None: result["errors"].append("unsupported image extension")
-    if family is None: result["errors"].append("invalid or unsupported image signature")
-    elif extension is not None and extension != family: result["errors"].append("extension/signature mismatch")
-    if family is not None and (not isinstance(width,int) or isinstance(width,bool) or width <= 0 or not isinstance(height,int) or isinstance(height,bool) or height <= 0):
-        result["errors"].append("invalid or missing image dimensions")
+    result = _legacy.fingerprint_asset(path, project_root)
+    if not result.get("exists") or not result.get("path_allowed"):
+        return result
+    resolved = Path(str(result.get("resolved_path")))
+    try:
+        data = resolved.read_bytes()
+    except OSError as exc:
+        result.setdefault("errors", []).append(f"could not reread image bytes: {exc}")
+        return result
+    family = result.get("signature_family")
+    if family == "png":
+        result["errors"].extend(_png_integrity(data))
+    elif family == "jpeg":
+        result["errors"].extend(_jpeg_integrity(data))
+    elif family == "webp":
+        result["errors"].extend(_webp_integrity(data))
+    result["errors"].extend(_decoder_integrity(data, family))
     return result
 
 
@@ -109,21 +214,41 @@ def fingerprint_packet(packet: dict[str, Any], project_root: Path) -> dict[str, 
     validate_audit_packet(packet)
     assets: dict[str, Any] = {}
     for asset in packet.get("assets", []):
-        asset_id = asset["asset_id"]; raw_path = Path(str(asset.get("path", ""))); path = raw_path if raw_path.is_absolute() else project_root / raw_path
-        result = fingerprint_asset(path, project_root); result["asset_id"] = asset_id; assets[asset_id] = result
-    return {"audit_version":packet.get("audit_version"),"project_id":packet.get("project_id"),"checkpoint":packet.get("checkpoint"),"project_root":str(project_root.resolve()),"assets":assets}
+        asset_id = asset["asset_id"]
+        raw_path = Path(str(asset.get("path", "")))
+        path = raw_path if raw_path.is_absolute() else project_root / raw_path
+        result = fingerprint_asset(path, project_root)
+        result["asset_id"] = asset_id
+        assets[asset_id] = result
+    return {
+        "audit_version": packet.get("audit_version"),
+        "project_id": packet.get("project_id"),
+        "checkpoint": packet.get("checkpoint"),
+        "project_root": str(project_root.resolve()),
+        "assets": assets,
+    }
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Fingerprint real asset files for evidence auditing")
-    parser.add_argument("audit_input", type=Path); parser.add_argument("project_root", type=Path); parser.add_argument("--output", type=Path); args = parser.parse_args()
+    parser.add_argument("audit_input", type=Path)
+    parser.add_argument("project_root", type=Path)
+    parser.add_argument("--output", type=Path)
+    args = parser.parse_args()
     try:
-        packet = json.loads(args.audit_input.read_text(encoding="utf-8")); result = fingerprint_packet(packet, args.project_root)
+        packet = json.loads(args.audit_input.read_text(encoding="utf-8"))
+        result = fingerprint_packet(packet, args.project_root)
     except (OSError, UnicodeError, json.JSONDecodeError, ValueError) as exc:
-        print(f"FAIL: invalid audit input: {exc}"); return 1
+        print(f"FAIL: invalid audit input: {exc}")
+        return 1
     text = json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True)
-    if args.output: args.output.parent.mkdir(parents=True, exist_ok=True); args.output.write_text(text + "\n", encoding="utf-8")
-    else: print(text)
+    if args.output:
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(text + "\n", encoding="utf-8")
+    else:
+        print(text)
     return 0
 
-if __name__ == "__main__": raise SystemExit(main())
+
+if __name__ == "__main__":
+    raise SystemExit(main())
