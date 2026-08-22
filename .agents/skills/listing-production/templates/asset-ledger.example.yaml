@@ -1,0 +1,16 @@
+assets:
+  G1:
+    status: USER_APPROVED
+    candidates:
+      - candidate_id: G1-v1
+        output_ref: file:g1-v1
+        status: USER_SELECTED
+    selected_candidate_id: G1-v1
+    current_output_ref: file:g1-v1
+set_qa:
+  status: CLEAR
+  reviewed_asset_ids:
+    - G1
+  reviewed_output_refs:
+    G1: file:g1-v1
+  visual_review_ref: contact-sheet:final-v1

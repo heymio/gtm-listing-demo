@@ -1,0 +1,12 @@
+production_freeze:
+  expected_assets: 3
+  user_approved_assets:
+    - G1
+  blocked_assets: []
+  revision_pending:
+    - G2
+    - A1
+  approved_output_refs:
+    - file:g1-v1
+  set_qa_status: MISSING
+  ready_for_hardening: false
