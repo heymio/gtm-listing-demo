@@ -10,6 +10,21 @@ REPO_ROOT = SKILL_DIR.parents[2]
 SKILLS_ROOT = REPO_ROOT / ".agents" / "skills"
 INTERNAL = ["listing-planning", "listing-production", "listing-hardening", "listing-evidence-auditor"]
 FORBIDDEN_GENERIC_DEFAULTS = ["amazon.co.jp", "switchbot", "light bars", "s30 mini"]
+PROFILE_MIRRORS = [
+    ("channels", "_template.md"),
+    ("channels", "amazon.md"),
+    ("channels", "dtc-product-page.md"),
+    ("channels", "generic-marketplace.md"),
+    ("channels", "retailer-pdp.md"),
+    ("locales", "_template.md"),
+    ("locales", "ja-JP.md"),
+    ("locales", "en-US.md"),
+    ("locales", "de-DE.md"),
+    ("locales", "it-IT.md"),
+    ("regions", "_template.md"),
+    ("regions", "eu.md"),
+    ("categories", "_template.md"),
+]
 
 
 def fail(message: str) -> None:
@@ -18,10 +33,28 @@ def fail(message: str) -> None:
 
 
 def main() -> int:
+    version = REPO_ROOT / "VERSION"
+    if not version.is_file() or version.read_text(encoding="utf-8").strip() != "0.3.2":
+        fail("VERSION must be exactly 0.3.2 for this migration")
+
     for name in ["gtm-listing-demo", *INTERNAL]:
         skill = SKILLS_ROOT / name / "SKILL.md"
         if not skill.is_file():
             fail(f"missing sibling Skill: {name}")
+
+    # The user-facing Skill keeps discoverable compatibility profile copies,
+    # while listing-planning owns runtime profile loading. They must never drift.
+    public_profiles = SKILLS_ROOT / "gtm-listing-demo" / "profiles"
+    planning_profiles = SKILLS_ROOT / "listing-planning" / "profiles"
+    for group, filename in PROFILE_MIRRORS:
+        public_path = public_profiles / group / filename
+        planning_path = planning_profiles / group / filename
+        if not public_path.is_file():
+            fail(f"missing public compatibility profile: {group}/{filename}")
+        if not planning_path.is_file():
+            fail(f"missing Planning profile mirror: {group}/{filename}")
+        if public_path.read_text(encoding="utf-8") != planning_path.read_text(encoding="utf-8"):
+            fail(f"profile mirror drift: {group}/{filename}")
 
     package_text = (SKILL_DIR / "scripts" / "package_skill.py").read_text(encoding="utf-8").casefold()
     for name in INTERNAL:
@@ -54,6 +87,7 @@ def main() -> int:
             fail(f"generic core leakage: {forbidden}")
 
     print("PASS: global five-Skill overlay/distribution contract is valid")
+    print(f"PASS: {len(PROFILE_MIRRORS)} public/Planning profile mirrors are identical")
     return 0
 
 
