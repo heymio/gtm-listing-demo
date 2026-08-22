@@ -1,0 +1,52 @@
+asset_id: G1
+role:
+  channel: amazon
+  region: gallery
+  slot: G1
+  asset_type: gallery-native
+objective:
+  shopper_task: Understand one purchase reason quickly
+  primary_message: Evidence-backed message
+strategy_context:
+  consumer_barrier: Main barrier
+  core_tension: Strategic tension
+  proof_principle: Show direct evidence
+evidence:
+  allowed:
+    - confirmed fact
+  forbidden:
+    - unsupported claim
+evidence_mode: SOURCE_FAITHFUL
+product_sources:
+  identity_required:
+    - SRC-ID
+  proof_required: []
+benchmark:
+  references:
+    - BENCH-01
+  learn_from:
+    - hierarchy
+  reuse_asset: false
+composition:
+  product_role: hero
+  environment: project-defined
+  information_density: low
+  one_image_focus: true
+set_context:
+  page_visual_direction:
+    asset_id: G1
+    visual_role: hero-positioning
+    scene_family: clean-stage
+    composition_family: centered
+    tone: bright
+    product_scale: large
+    proof_form: product
+  nearest_neighbors: []
+output:
+  aspect_ratio: "1:1"
+  final_role: Gallery
+  quantity: 1
+must_preserve:
+  - exact product identity
+must_not_generate:
+  - fictional product structure

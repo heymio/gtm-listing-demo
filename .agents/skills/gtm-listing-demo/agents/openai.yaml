@@ -1,5 +1,5 @@
 interface:
   display_name: "GTM Listing Demo"
-  short_description: "Multi-market, multi-channel listing strategy and visual demo workflow"
+  short_description: "Global listing strategy, visual production, and verified standalone demo workflow"
   brand_color: "#0F2A5F"
-  default_prompt: "Use the project-defined market, locale, region, channel, category, offer, and page targets. Build Source and Fact Gates before strategy, use evidence-driven localization, map content to actual channel slots, and keep unsupported claims review-only."
+  default_prompt: "Use $gtm-listing-demo. Keep market, locale, region, channel, category, offer, and page targets separate. Follow Major Stage Checkpoints: build evidence-backed Planning and the complete Demo-required asset set, produce final visuals one Asset Packet at a time, then run exact-file Hardening and deliver one verified standalone responsive HTML Demo."

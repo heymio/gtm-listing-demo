@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate the public gtm-listing-demo skill with the Python standard library."""
+"""Validate the public gtm-listing-demo router and retained global profiles."""
 
 from __future__ import annotations
 
@@ -14,6 +14,7 @@ SKILL_FILE = SKILL_DIR / "SKILL.md"
 REQUIRED = [
     SKILL_FILE,
     SKILL_DIR / "agents" / "openai.yaml",
+    SKILL_DIR / "references" / "routing.md",
     SKILL_DIR / "references" / "workflow.md",
     SKILL_DIR / "references" / "contracts.md",
     SKILL_DIR / "references" / "localization.md",
@@ -106,14 +107,16 @@ def main() -> int:
         fail("description exceeds 500 characters")
 
     required_headings = [
-        "# GTM Listing Demo",
-        "## Core principle",
-        "## Configuration layers",
-        "## Mandatory rules",
-        "## Workflow",
-        "## Required outputs",
-        "## Stop and escalate",
-        "## Quality gate",
+        "# GTM Listing Demo Router",
+        "## Global configuration model",
+        "## Stage routing",
+        "## Major Stage Checkpoint",
+        "## Transition Command",
+        "## Retry Budget",
+        "## Context Firewall",
+        "## Plane boundaries",
+        "## State and resume",
+        "## Public-safety boundary",
     ]
     for heading in required_headings:
         if heading not in skill_text:
@@ -153,14 +156,14 @@ def main() -> int:
             fail(f"eval coverage missing: {required_phrase}")
 
     word_count = len(re.findall(r"[\w\u4e00-\u9fff]+", skill_text))
-    if word_count > 1200:
-        fail(f"SKILL.md is too long: {word_count}")
+    if word_count > 1400:
+        fail(f"router SKILL.md is too long: {word_count}")
 
-    print("PASS: public gtm-listing-demo skill is structurally valid")
-    print(f"PASS: {len(REQUIRED)} required files exist")
-    print("PASS: no category/private leakage in core files")
+    print("PASS: public gtm-listing-demo router is structurally valid")
+    print(f"PASS: {len(REQUIRED)} retained global files exist")
+    print("PASS: no category/private leakage in global core files")
     print("PASS: no persona leakage in locale or region profiles")
-    print(f"PASS: SKILL.md token-like count {word_count}")
+    print(f"PASS: router SKILL.md token-like count {word_count}")
     return 0
 
 

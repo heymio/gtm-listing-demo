@@ -1,0 +1,12 @@
+{
+  "schema_version": "0.2",
+  "channel": {"id":"marketplace-example","capabilities":{"declared_max_modules":5}},
+  "approval_events": [],
+  "assets": [],
+  "locked_module_plan": {"status":"LOCKED","approval_id":null,"plan_hash":null,"modules":[]},
+  "asset_slot_contract": [],
+  "implementation": {"plan_hash":null,"slots":[]},
+  "audit_checkpoints": {"pre_9_required":true},
+  "production_freeze": {"expected_assets":0,"user_approved_assets":[],"approved_output_refs":[]},
+  "frontend_fidelity": {"required":false,"status":"N/A","reference_ref":null}
+}

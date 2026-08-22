@@ -1,17 +1,23 @@
 ---
 name: gtm-listing-demo
-description: Use when planning, reviewing, or producing product listing strategy, enhanced content, visual briefs, or interactive demos across markets, locales, sales channels, product categories, and offer variants from product documents, VOC, competitor pages, research, or design assets.
+description: Use when running a market- and channel-specific listing project from source intake through strategy, focused visual production, hardening, and standalone demo review across global markets, locales, channels, categories, offers, and page targets.
 ---
 
-# GTM Listing Demo
+# GTM Listing Demo Router
 
-## Core principle
+## Purpose
 
-Build one evidence-governed Product Truth and Product Strategy, then adapt them to the requested market, locale, channel, category, offer, and page targets.
+One project, one normal invocation: `$gtm-listing-demo`.
 
-## Configuration layers
+The user-facing Skill is a thin Router. Stage-specific work lives in sibling execution Skills so deep market/product reasoning, focused visual production, and final delivery hardening do not compete inside one always-on instruction context.
 
-Keep these layers separate:
+Operating principle:
+
+> Think deeply. Produce narrowly. Verify rigorously.
+
+## Global configuration model
+
+The Router preserves the global configuration model and passes selected configuration into Planning:
 
 | Layer | Responsibility |
 |---|---|
@@ -23,81 +29,131 @@ Keep these layers separate:
 | Brand / Private Overlay | Company rules, internal capabilities, confidential claims, and approvals |
 | Project Evidence | Actual facts, consumer needs, scenarios, keywords, assets, and decisions |
 
-## Mandatory rules
+Keep `market`, `locale`, `region_overlays`, `channel`, `category`, `offer`, and `page_targets` distinct. A locale or region label is never consumer evidence by itself.
 
-1. Start with Project Definition, Source Gate, and Fact Gate.
-2. Separate `market`, `locale`, `region_overlays`, `channel`, `category`, `offer`, and `page_targets`.
-3. A locale profile may define language and formatting, but may not assert what consumers prefer.
-4. A region overlay may define verification obligations, but may not create a regional persona.
-5. A channel profile may define page structure, but may not contain product-category selling points.
-6. Product and category insights require project evidence; country labels are not evidence.
-7. VOC is an independent strategy input. Competitor listing capture does not replace user research.
-8. One Product Truth layer may fork into Single, Kit, Bundle, and variant pages only after a Page Boundary Matrix exists.
-9. `Message != Module`; use the actual channel module structure and pack messages where appropriate.
-10. AI may create environments and concept backgrounds. Product geometry, UI, ports, controls, accessories, packaging, and functional proof require real assets or explicit provisional labels.
-11. Every module must pass the Visual Evidence Matrix: `message → visual subject → evidence object → asset`.
-12. Missing evidence blocks only dependent outputs. It never authorizes invented facts.
-13. Review-only information must be hidden or replaced by neutral copy in consumer mode.
-14. Current channel rules, legal requirements, pricing, certification, and platform capabilities must be verified from authoritative sources before formal release.
+## Stage routing
 
-## Workflow
+Read `references/routing.md` and route by current stage:
 
-Read `references/workflow.md` and only the profiles selected in Project Definition.
+- Stage 0–7 → `listing-planning`
+- Stage 7.5–8 → `listing-production`
+- Stage 8.5–10 → `listing-hardening`
+- `listing-hardening` delegates exact-file evidence work to `listing-evidence-auditor`.
+
+Do not duplicate detailed stage rules in this Router.
+
+### Skill resolution
+
+In the repository/Codex distribution, resolve stage names as sibling Skills under `.agents/skills/`.
+
+In the one-install compatibility package, the stage/audit Skills may be embedded under `internal-skills/<skill-name>/`. Embedded loading is a single-context fallback: formal handoff boundaries still apply, but merely loading the auditor inside the same model context is not independent semantic review.
+
+The user still invokes only `$gtm-listing-demo`.
+
+## Major Stage Checkpoint
+
+Use **Major Stage Checkpoint** execution by default. Complete the current major stage to a reviewable state, then stop for user review before entering the next major stage unless the user gives a Transition Command or explicitly requests autonomous execution.
+
+Normal checkpoint display stays concise:
 
 ```text
-0 Project Definition
-1 Source Intake
-2 Source Normalization & Coverage Gate
-3 Fact Lock
-4 Consumer Strategy
-4.2 Market & Localization Enrichment
-5 Message Architecture
-5.5 Channel Template Mapping
-6 Channel-specific Listing IA
-6.5 Asset Intake & Audit
-7 Channel Slot / Module Planning
-7.5 Visual Production Brief
-8 Visual Production + Visual Evidence QA
-9 Interactive Demo Assembly
-10 Final QA + Claim Gate + Review Mode
+Done:
+Open:
+Next:
 ```
 
-## Required outputs
+Show detailed state manifests only for `PARTIAL`, `BLOCKED`, or explicit audit/state review.
 
-Before declaring the workflow complete, produce:
+## Transition Command
 
-- Project Definition and selected profiles
-- Source Registry and coverage status
-- Fact Ledger, Conflict Ledger, Missing Evidence, Claim Readiness, and Gate Result
-- Consumer Strategy and Market Evidence Registry
-- Page Target / Product Boundary Matrix
-- Message Architecture and Message-to-Slot Matrix
-- Asset Manifest and Asset Gap Analysis
-- Channel Slot / Module Plan
-- Visual Production Brief and Visual Evidence Matrix
-- Interactive demo or production-ready module specification
-- Product, Claim, Channel, Market/Locale, Visual, Mobile, Technical, and Review Mode QA results
+Treat `continue`, `next`, `go`, `go next`, `继续`, `下一步`, and equivalent wording as a **Transition Command** unless the user explicitly asks to keep improving the current artifact.
 
-Use `references/contracts.md`.
+On a Transition Command:
 
-## Stop and escalate
+1. stop further retry/regeneration for the current artifact/problem;
+2. preserve the best current result and truthful unresolved status;
+3. persist the current formal handoff/state;
+4. advance to the next stage or asset;
+5. do not silently reopen prior work.
 
-Pause only the affected output and ask a targeted question when:
+A Transition Command never promotes missing evidence into a false PASS.
 
-- sources conflict on a consumer-visible fact;
-- a claim depends on testing, certification, pricing, availability, subscription terms, or launch scope;
-- a country or region assumption lacks category- and project-specific evidence;
-- a channel module or editable slot cannot be verified;
-- a product or UI asset is being reconstructed instead of sourced;
-- offer boundaries cannot be separated;
-- mobile interaction, asset paths, or consumer-mode hiding fail.
+## Retry Budget
 
-## Quality gate
+For the same artifact and the same identified problem, allow at most **two autonomous attempts** without new user input or new evidence. After the Retry Budget is exhausted, surface the current result, revision need, or blocker.
 
-Run every checklist in `references/qa.md`. In a repository execution environment, run:
+A Transition Command advances immediately.
 
-```bash
-python .agents/skills/gtm-listing-demo/scripts/validate_skill.py
+## Context Firewall
+
+The Router enforces a **Context Firewall** between execution planes.
+
+Planning may use deep product, offer, claim, VOC, market, locale, region, category, competitor, channel, and project-evidence reasoning. It compresses resolved production-relevant conclusions into formal handoff objects.
+
+Production receives only:
+
+- Creative Strategy Kernel;
+- Production Handoff;
+- current one-job Asset Packet;
+- referenced source assets;
+- approved visual benchmarks/patterns.
+
+Do not inject full workflow narration, long research history, prior failed attempts, auditor reports, or delivery-state machinery into ordinary visual-production prompts.
+
+Hardening receives Production Freeze, exact final files, locked page/slot requirements, relevant verification context, and frontend evidence. It does not need the full strategy conversation.
+
+## Plane boundaries
+
+### Planning
+
+`listing-planning` answers:
+
+> What should we build, for this market/channel/offer, and why?
+
+It owns Product Truth, offer/page boundaries, claim readiness, consumer strategy, market/locale enrichment, selected profiles, channel architecture, module/slot planning, Creative Strategy Kernel, and the Complete Demo-Required Production Set.
+
+### Production
+
+`listing-production` answers:
+
+> Produce the approved artifacts.
+
+It is artifact-first. It uses one-job Asset Packets, preserves product identity, applies visual direction and evidence rules, records candidate history and creative approval, performs asset-level and set-level Creative QA, and creates Production Freeze only for the complete current production scope.
+
+### Hardening
+
+`listing-hardening` answers:
+
+> Are the exact final artifacts safe, channel-correct, technically valid, and ready to assemble/deliver?
+
+It owns final file identity, evidence and role/scope verification, channel/frontend fidelity, Demo assembly, delivery parity, standalone HTML validation, and final QA.
+
+## State and resume
+
+Conversation history is not the project database. Preserve formal project state through:
+
+- Project Brief / Project Definition;
+- Creative Strategy Kernel;
+- Production Handoff;
+- Asset Ledger / Production Freeze;
+- Delivery State.
+
+Use project/workspace files when the runtime supports them; otherwise maintain compact structured state without dumping control-plane detail into every user-facing response.
+
+## Team Golden Path
+
+```text
+Upload source material
+→ review Product / Offer / Claim baseline
+→ review Consumer / Market Strategy
+→ review channel page plan
+→ review Creative Strategy / complete production asset set
+→ review generated visuals
+→ review verified standalone demo
 ```
 
-When revising the skill, rerun the scenarios under `evals/`.
+Ordinary users should not need to manually invoke internal Skills or understand validators, hashes, provenance, or state-machine internals.
+
+## Public-safety boundary
+
+Keep reusable public logic market-, category-, brand-, and product-neutral unless content intentionally lives in a selected profile, example, eval, private overlay, or project evidence.
