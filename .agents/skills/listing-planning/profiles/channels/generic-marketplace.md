@@ -15,6 +15,10 @@ The requested platform has no maintained channel profile.
 - mobile behavior
 - approval and moderation rules
 
-When a module or field type cannot be proven, record `UNKNOWN`. Do not rename it as another marketplace/DTC/retailer module by analogy.
+## Unknown handling
+
+When the module or field type cannot be proven, record `UNKNOWN`. Do not rename it as an Amazon, DTC, or retailer module by analogy.
+
+## Output
 
 Create a project-specific Channel Capability Map before slot planning.
