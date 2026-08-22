@@ -77,6 +77,8 @@ def _minimal_state_v033() -> dict:
     return state
 
 
+# Public fixture used by cross-skill adversarial regressions.
+minimal_state = _minimal_state_v033
 legacy.minimal_state = _minimal_state_v033
 
 
