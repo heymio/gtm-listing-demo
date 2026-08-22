@@ -16,4 +16,10 @@ A retailer owns the product detail page template and allows the brand to supply 
 - mobile rendering
 - content approval process
 
-Map strategy into the retailer's actual slots. Do not assume Amazon or DTC components exist.
+## Planning rule
+
+Map the strategy into the retailer's actual slots. Do not assume Amazon or DTC components exist.
+
+## Content roles
+
+Prioritize product identity, core reasons to buy, factual specifications, compatibility, media proof, and objections according to the retailer's available fields.
