@@ -1,146 +1,71 @@
-# Workflow reference
+# Global workflow reference
+
+The user normally invokes `$gtm-listing-demo`; detailed execution belongs to the stage-local Skills.
 
 ## Stage 0 — Project Definition
 
-Record:
-
-- market country
-- locale
-- region overlays
-- channel type and site
-- product category
-- product and offer definitions
-- page targets
-- output type
-- review audience
-- account or retailer capabilities
-
-**Gate:** Market, locale, region, channel, category, offer, and page target are not collapsed into one field.
+Record market, locale, region overlays, channel/site, category, product/offer definitions, page targets, output type, review audience, and known account/retailer capabilities. Keep these dimensions separate.
 
 ## Stage 1 — Source Intake
 
-Collect product marketing documents, specifications, project approvals, pricing decisions, research, VOC, competitor pages, earlier-generation references, brand guidance, product renders, UI sources, and videos.
+Collect product/commercial sources, research/VOC, current channel references, brand guidance, product/UI/visual sources, and relevant earlier-generation material. VOC remains an independent evidence stream.
 
-VOC remains an independent evidence stream. A competitor URL does not make VOC complete.
+## Stage 2 — Source Normalization & Coverage
 
-**Output:** Project Input Pack.
+Separate product-fact authority, commercial/marketing decision authority, consumer evidence, locale reference, channel reference, and visual reference. Missing evidence blocks only dependent outputs.
 
-## Stage 2 — Source Normalization & Coverage Gate
+## Stage 3 — Product / Offer / Claim Lock
 
-For every source record product, offer, version, authority, freshness, completeness, allowed usage, and downstream dependencies.
-
-Separate product-fact authority, commercial-decision authority, marketing-decision authority, consumer evidence, localization reference, channel reference, and visual reference.
-
-Classify missing information by downstream impact.
-
-**Output:** Source Registry, Missing Coverage, and `SOURCE_GATE`.
-
-## Stage 3 — Fact Lock
-
-Create:
-
-- Fact Ledger
-- Conflict Ledger
-- Missing Evidence
-- Claim Readiness
-- Gate Result
-
-For successor products, distinguish `INHERITED-PENDING`, `UPGRADED`, `NEW`, `CONFLICT`, and `MISSING`. An earlier product never proves a new product fact without explicit inheritance evidence.
-
-**Gate:** Consumer copy cannot use `CONFLICT`, `MISSING`, `PROHIBITED`, or an unqualified `CONDITIONAL` fact.
+Create stable Product Truth, offer/page boundaries, conflicts, missing evidence, and claim readiness. Earlier-generation facts never prove a successor fact without explicit inheritance evidence.
 
 ## Stage 4 — Consumer Strategy
 
-Draft Target User, JTBD, Pain Points, Purchase Barriers, Benefits, Reasons to Believe, Differentiators, and Message Priority from the evidence. The user reviews, confirms, or overrides.
-
-Do not derive needs from the country name alone.
-
-**Output:** Draft Consumer Strategy and Human Review Gate.
+Build target user, JTBD, barriers, purchase reasons, Reasons to Believe, differentiators, and message priority from evidence. Do not derive consumer needs from a market/country name.
 
 ## Stage 4.2 — Market & Localization Enrichment
 
-Research the intersection of:
-
-```text
-Product / Category
-× Market
-× Locale
-× Channel
-× Current evidence
-```
-
-External research may add need states, scenarios, terminology, search language, purchase motivation, objections, and channel conventions. It may not overwrite product facts.
-
-Use current authoritative sources for regulations and platform rules. Separate evidence from inference.
-
-**Output:** Market Evidence Registry and Localization Brief.
+Research Product/Category × Market × Locale × Channel × current project evidence. Separate observed evidence from inference; do not overwrite Product Truth.
 
 ## Stage 5 — Message Architecture
 
-Define the Core Promise, reasons to buy, trust evidence, objections, and message priority. Build shared product messages once, then fork by offer and page target.
+Build the Core Promise, purchase reasons, proof principles, objections, and priorities, then fork by offer/page target where required.
 
-**Output:** Message House and Message Priority.
+## Stage 5.5 — Channel Mapping
 
-## Stage 5.5 — Channel Template Mapping
+Load the selected global channel profile and verify current site/account capabilities. `Message != Module`; map strategy to real editable regions and interaction families.
 
-Load the selected channel profile and verify the actual account or retailer capabilities. Map messages to the editable slots and module families available for the project.
+Platform Capability evidence is separate from Frontend Visual evidence.
 
-Do not convert a message list directly into an equal number of static banners.
+## Stage 6 — Page IA
 
-**Output:** Channel Capability Map and Message-to-Slot Matrix.
+Define shopper sequence inside the real channel/page structure for every page target. Shared topics may appear in several regions when their shopper role differs.
 
-## Stage 6 — Channel-specific Listing IA
+## Stage 6.5 — Lightweight Source Asset Intake
 
-Define reader sequence inside the real channel structure. The same message may appear in several slots when its role changes, such as identity, summary, proof, scenario, comparison, or objection handling.
+Inventory source assets and identify missing render/photo/UI/design/evidence needs. A fresh project does not require a full project-wide exact-file audit here. Use a targeted early audit only for inherited/reused exact assets that must carry prior approval forward.
 
-**Output:** Page IA for every page target.
+## Stage 7 — Final Page / Asset Planning
 
-## Stage 6.5 — Asset Intake & Audit
+Produce the Creative Strategy Kernel, complete page plan, **Complete Demo-Required Production Set**, Page Visual System, Evidence Mode for every final asset, source bindings, and Production Handoff.
 
-Accept static assets and design sources. Build an Asset Manifest containing object, source, quality, evidence supported, usable slots, status, and replacement requirement.
+Priority proof coverage does not make a partial asset set complete.
 
-Classify gaps as render, photography, design, UI export, AI background, video, copy, or blocked.
+## Stage 7.5–8 — Focused Visual Production
 
-**Output:** Asset Manifest and Asset Gap Analysis.
+`listing-production` executes one Asset Packet at a time with artifact-first behavior, identity/proof source rules, Selection Lock, set-level Creative QA, exact-output-bound final whole-set review, Scope Delta, and Production Freeze.
 
-## Stage 7 — Channel Slot / Module Planning
+## Stage 8.5 — Pre-Demo Exact-File Audit
 
-For every slot or module define message role, interaction, evidence, existing asset, asset to create, copy status, and claim gate.
+`listing-hardening` delegates the complete current final set to `listing-evidence-auditor`. Exact files, hashes, approvals, role/scope evidence, and required-set completeness must be reconciled before final Demo consumption.
 
-**Output:** Channel Slot / Module Plan.
+## Stage 9 — Demo Assembly
 
-## Stage 7.5 — Visual Production Brief
+Assemble only approved/verified project content into the locked page/channel architecture. Reproduce a native shell only when current frontend evidence supports it; otherwise use a clearly labeled Content Review Demo.
 
-Specify composition, visual subject, evidence object, product placement, UI placement, text safe area, responsive behavior, asset source, and prohibited reconstruction.
-
-**Output:** Visual Production Brief and Visual Evidence Matrix.
-
-## Stage 8 — Visual Production + Visual Evidence QA
-
-Use:
-
-```text
-approved environment or AI background
-+ real product asset
-+ real UI
-+ functional graphic overlay
-+ final copy
-```
-
-Reject a visual when the subject or evidence object cannot directly prove the message.
-
-**Output:** Master visuals and channel adaptations.
-
-## Stage 9 — Interactive Demo Assembly
-
-Implement only the interactions required to review the proposed page: gallery, tabs, carousel, hotspot, storyboard or video, comparison, Q&A, variants, responsive layout, and review mode.
-
-When downloaded-file previews may restrict JavaScript, use native HTML or CSS-safe controls for essential interactions.
-
-**Output:** Interactive Review Demo.
+The user-facing final project Demo is one standalone `.html` file with portable embedded runtime resources.
 
 ## Stage 10 — Final QA
 
-Run Product, Claim, Channel, Market/Locale, Visual, Mobile, Technical, and Review Mode QA. Report passed checks and open items separately.
+Run exact asset, claim, channel, market/locale, frontend, delivery parity, standalone dependency, responsive/mobile, interaction, and Review Mode QA.
 
-**Output:** Final QA Result and Open Items.
+Static validation is necessary but not sufficient. Runtime verification requires 1440px desktop and 390px mobile. If browser/runtime verification cannot be performed, mobile/interaction status remains `BLOCKED`.

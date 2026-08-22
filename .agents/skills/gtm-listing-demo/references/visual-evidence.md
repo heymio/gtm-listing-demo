@@ -1,62 +1,48 @@
-# Visual evidence reference
+# Visual evidence and production reference
 
 ## Evidence chain
 
-Every visual must document:
+Every factual visual should document:
 
 ```text
 Message
 → Visual subject
 → Evidence object
-→ Asset source
+→ Asset/source
 ```
 
-A visual passes only when the evidence object directly proves the message.
+A decorative image does not become proof merely because it appears beside factual copy.
 
-## Common mismatches
+## Evidence Mode
 
-Reject:
+Every v0.3.2 final asset uses one mode:
 
-- a packshot used as proof of a use scenario
-- product quantity used as proof of coverage or management
-- another offer's hardware or UI used on the current offer page
-- storage copy paired with a visual that does not show the storage device, path, or interface
-- remote-control copy paired with a generic phone image without the relevant UI
-- mechanism copy paired with decoration rather than mechanism evidence
-- generated product geometry or invented interface states
+- `SOURCE_FAITHFUL` — exact product/pack/offer identity is intrinsic;
+- `CREATIVE_MOCK` — environment/atmosphere/spatial concept may be generated, but generated details are not Product Truth;
+- `PROOF_VISUAL` — factual mechanism/UI/installation/dimension/compatibility proof requires authoritative source evidence.
 
-## Asset hierarchy
+Keep product-identity requirements separate from proof-grade requirements. A Creative Mock may tolerate missing proof-only evidence with an explicit limitation, but missing identity evidence required to keep the actual product faithful blocks production.
 
-Prefer:
+## Source hierarchy
 
-1. approved product renders or photography
-2. approved UI exports
-3. approved technical diagrams
-4. approved lifestyle photography
-5. designed evidence graphics built from approved assets
-6. AI-generated environments with real product and UI composited afterward
+Prefer authoritative real product/UI/technical/lifestyle sources and designed evidence graphics built from them. AI may create approved environment, atmosphere, lighting, or non-identifying context around source-faithful product evidence.
 
-## AI boundaries
+AI may not establish product geometry, controls, interfaces, packaging, UI states, compatibility, certification, or performance proof.
 
-AI may create:
+## Page Visual System
 
-- environment backgrounds
-- lighting and atmosphere
-- non-identifying lifestyle context
-- conceptual visual directions
+Each final asset has a structured visual role, scene family, composition family, tone, product scale, and proof form. Same art direction does not imply same composition.
 
-AI may not establish:
+Production receives only the current direction and nearest same-page-region neighbors rather than the full project history.
 
-- product shape, dimensions, ports, controls, accessories, or packaging
-- UI screens or feature states
-- compatibility
-- certification
-- performance proof
+## Selection Lock
 
-## Offer boundaries
+Every generated alternative has candidate identity. Once the user selects an exact candidate, preserve its exact output reference and creative status until explicit reopen. Production continuation does not authorize silently generating/replacing another version.
 
-Maintain a Page Boundary Matrix before visual production. Shared product facts may be reused; offer-only hardware, storage, service, UI, and workflows may not cross pages.
+## Set-level review
 
-## Mobile
+Asset-level PASS is insufficient. Review visual rhythm and message-role diversity across the ordered set, then record a final whole-set/contact-sheet review bound to exact current output refs before Production Freeze.
 
-Validate crop, text size, tab labels, comparison behavior, and tap targets on mobile. Essential review interactions should remain usable in restrictive downloaded-file preview environments.
+## Hardening boundary
+
+Creative approval does not prove exact physical identity, provenance, semantic role, or final delivery eligibility. Those checks belong to Evidence Auditor / Hardening.

@@ -1,6 +1,10 @@
-# Output contracts
+# Global output contracts
+
+Detailed machine contracts are owned by `listing-planning`, `listing-production`, `listing-hardening`, and `listing-evidence-auditor`. This reference summarizes the user-facing global objects.
 
 ## Project Definition
+
+Keep these separate:
 
 ```yaml
 market:
@@ -11,107 +15,76 @@ region_overlays:
   - EU
 channel:
   type: amazon
-  site: amazon.de
+  site: project-defined
 category: project-defined
 product:
-  name: Product name or placeholder
+  name: Example Product
 offers:
   - single
-  - kit
 page_targets:
   - single-listing
-  - kit-listing
-output:
-  - strategy
-  - module-plan
-  - interactive-demo
 ```
 
-## Selected Profiles
+## Product / evidence baseline
 
-| Layer | Profile | Why selected | Verified source | Status |
-|---|---|---|---|---|
+Maintain Source Registry, Product Truth / Fact Ledger, conflicts, missing evidence, claim readiness, Market Evidence Registry, and Page Target / Product Boundary Matrix.
 
-## Source Registry
+A market label without project/category evidence cannot populate consumer insight.
 
-| Source ID | Product / Offer | Type | Version/date | Authority | Completeness | Allowed usage | Downstream dependency |
-|---|---|---|---|---|---|---|---|
+## Creative Strategy Kernel
 
-Use authorities such as `product fact`, `commercial decision`, `marketing decision`, `consumer evidence`, `locale reference`, `channel reference`, and `visual reference`.
+Contains compressed production-relevant conclusions such as target user, core tension/promise, purchase reasons, barriers, Reasons to Believe, message priority, market implications, proof principles, visual direction, and anti-patterns.
 
-## Fact Ledger
+## Production Handoff
 
-| Domain | Fact | Value | Conditions | Source | Status | Offer/page scope | Claim readiness |
-|---|---|---|---|---|---|---|---|
+The complete handoff contains:
 
-Statuses: `CONFIRMED`, `CONDITIONAL`, `INHERITED-PENDING`, `CONFLICT`, `MISSING`, and `PROHIBITED`.
+- project market/locale/channel/category/offer/page target;
+- approved page/region order;
+- **complete current asset set**;
+- per-asset role, slot, primary message, Evidence Mode, and status;
+- source asset bindings and product invariants;
+- Creative Strategy reference;
+- global visual direction and benchmarks;
+- Page Visual System direction for every current asset;
+- prohibited output and blocked assets.
 
-## Conflict Ledger
+A current asset without Evidence Mode or Page Visual System direction is invalid in v0.3.2.
 
-| ID | Field | Evidence A | Evidence B | Impact | Resolution owner | Temporary rule |
-|---|---|---|---|---|---|---|
+## Asset Ledger
 
-## Market Evidence Registry
+Records candidate history, exact selected candidate/output reference, creative status, approval reference, reopen history, and final whole-set QA.
 
-| Need state / language / behavior | Market | Locale | Channel | Category | Evidence | Evidence type | Confidence | Permitted use |
-|---|---|---|---|---|---|---|---|---|
+A user-selected output is Selection-Locked until explicit reopen.
 
-A country label without evidence cannot populate this table.
+## Final whole-set QA
 
-## Page Target / Product Boundary Matrix
-
-| Capability or message | Offer A | Offer B | Bundle | Evidence owner | Notes |
-|---|---:|---:|---:|---|---|
-
-A blank cell means the page must not inherit that capability.
-
-## Consumer Strategy
+Bind the exact current set, not only Asset IDs:
 
 ```yaml
-target_user:
-jtbd:
-pain_points:
-purchase_barriers:
-benefits:
-reasons_to_believe:
-differentiator:
-message_priority:
-  p0:
-  p1:
-  p2:
-assumptions:
-confirmed_by_user:
+set_qa:
+  status: CLEAR
+  reviewed_asset_ids:
+    - G1
+    - G2
+  reviewed_output_refs:
+    G1: file:g1-v1
+    G2: file:g2-v2
+  visual_review_ref: contact-sheet:final-v1
 ```
 
-## Message-to-Slot Matrix
+Any later output change makes the old set review stale.
 
-| Message | Slot 1 | Slot 2 | Slot 3 | Comparison | Objection handling |
-|---|---:|---:|---:|---:|---:|
+## Production Freeze
 
-Use priority and role, not only binary presence.
+Answers whether the complete current creatively approved exact-output set is ready for Hardening. It does not claim evidence verification.
 
-## Asset Manifest
+## Delivery State
 
-| Asset ID | Object | Source | Quality | Evidence supported | Usable slots | Status | Replacement required |
-|---|---|---|---|---|---|---|---|
+Hardening records current verified channel capability, exact locked assets/approval provenance, locked module/slot plan, asset-slot contract, implementation state, Production Freeze, auditor evidence, frontend fidelity, and final parity.
 
-## Channel Slot / Module Plan
-
-| Slot | Channel module family | Message role | Interaction | Evidence | Existing asset | Asset to create | Claim gate |
-|---|---|---|---|---|---|---|---|
-
-## Visual Evidence Matrix
-
-| Module/tab | Main message | Visual subject | Evidence object | Asset | Alignment result |
-|---|---|---|---|---|---|
-
-`PASS` requires the visual to directly prove the copy. A packshot, product quantity, lifestyle scene, UI, and mechanism diagram are not interchangeable evidence.
+Machine-computed gates, not agent-authored declarations, decide final readiness.
 
 ## Review Mode
 
-| Status | Meaning | Consumer mode |
-|---|---|---|
-| `LOCKED` | Current evidence supports formal production | Content visible, badge hidden |
-| `PENDING CLAIM` | Requires product, commercial, legal, or test confirmation | Claim hidden or neutralized |
-| `DEMO ASSET` | Visual direction only | Internal label hidden; replace before release |
-| `PROVISIONAL UI` | Temporary interface evidence | Internal label hidden; replace before release |
+Review Mode may expose internal status/open items for review. Consumer Mode hides workflow labels, provisional notes, and internal gate narration while remaining semantically complete.

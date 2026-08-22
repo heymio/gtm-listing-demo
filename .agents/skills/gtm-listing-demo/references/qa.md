@@ -1,65 +1,74 @@
-# QA checklist
+# Global QA checklist
 
 ## Product and offer QA
 
-- All P0/P1 messages are covered.
-- Every number has a source and condition.
+- Product facts, offer/page boundaries, and conditions match evidence.
 - Earlier-generation capabilities are not silently inherited.
-- Offer and page boundaries match the Page Boundary Matrix.
-- No page uses hardware, service, UI, storage, or accessories owned by another offer.
+- Required P0/P1 and lower-priority final page roles needed by the Demo are covered.
 
 ## Claim QA
 
-- `CONFLICT`, `MISSING`, and `PROHIBITED` facts do not enter consumer copy.
-- Conditional claims include their conditions.
-- Price, availability, release date, certification, testing, performance, AI scope, cloud scope, and subscription terms are locked before release.
-- No unsupported absolute, comparative, or superlative claim is used.
+- Conflict/missing/prohibited facts do not enter consumer copy.
+- Conditional claims retain their conditions.
+- Current price, availability, certification/testing/performance/service terms are verified before formal release when relevant.
+- Unsupported absolute/comparative/superlative claims are rejected.
 
 ## Channel QA
 
-- Editable slots and module families are verified for the current account or retailer.
-- Module counts, fields, image rules, and interactions match current channel documentation.
-- Platform-generated areas are not designed as brand-controlled content.
-- Comparisons match real offer or product relationships.
+- Editable regions, interactions, and current account/site capabilities are verified.
+- Module/slot count is checked against current verified capability evidence rather than a generic hard-coded ceiling.
+- Platform-generated regions are not treated as brand-controlled.
+- Platform Capability evidence remains separate from Frontend Visual evidence.
 
 ## Market and locale QA
 
-- Market insights have category- and project-specific evidence.
-- Locale rules contain language and formatting, not personas or product priorities.
-- Region overlays do not replace country and locale research.
+- Market insights have project/category evidence.
+- Locale profiles define language/formatting, not personas or priorities.
+- Region overlays do not replace country/locale research.
 - Consumer copy is native and channel-appropriate.
-- Search language is researched for the selected category, locale, and channel.
-- Regulations and legal copy are verified from current authoritative sources.
 
-## Visual Evidence QA
+## Asset-level Creative QA
 
-For every module or tab:
+Each final asset has one dominant shopper task/message, appropriate product prominence, direct visual proof where required, controlled composition, credible realism, channel fit, source-faithful product identity, and explicit Evidence Mode.
 
-1. Main copy contains one primary promise.
-2. Visual subject is the object or scenario named by the copy.
-3. Evidence object proves the mechanism or benefit.
-4. Asset source is approved or explicitly provisional.
+## Set-level Creative QA
 
-## Mobile and Technical QA
+Review the ordered set for scene/composition/tone/product-scale/proof-form repetition and adjacent message redundancy. The final whole-set/contact-sheet review must bind exact current output refs; replacing one selected output invalidates the prior final set review.
 
-- Gallery, tabs, carousel, hotspot, storyboard or video, comparison, Q&A, variants, and review mode work on desktop and mobile.
-- Asset references resolve.
-- Standalone HTML has no unintended local dependencies.
-- ZIP archives preserve relative paths.
-- Console and page errors are zero.
-- Copy remains readable without zooming.
-- Wide comparisons have a usable mobile behavior.
+## Evidence / Hardening QA
 
-## Review Mode QA
+- Creative `USER_APPROVED` is not treated as evidence verification.
+- Real final files are fingerprinted from disk.
+- Approval binds exact current SHA, role, and scope.
+- Duplicate identifiers fail before dictionary/index overwrite.
+- Same-context semantic review does not self-certify independence.
+- Required asset-set completeness and exact slot scope are verified before Demo consumption.
 
-Review mode shows module type, status, open claim, provisional asset, and internal notes.
+## Standalone Demo QA
 
-Consumer mode hides internal terms, placeholder commercial data, module labels, claim gates, and review-only explanations while remaining semantically complete.
+- Final project deliverable is one `.html` file, not a Demo ZIP plus assets folder.
+- Runtime images/resources are portable embedded `data:` resources; external/local dependencies are rejected.
+- Mixed/external `srcset`, session-only literal `blob:` resources, external CSS/JS, and CSS imports/local URLs are rejected.
+- Responsive viewport, width breakpoint, and responsive image behavior are present.
+- If a carousel is present, controls/slides/inline click wiring are complete; a static page is allowed when no carousel is planned.
+
+## Runtime QA
+
+At 1440px desktop and 390px mobile verify:
+
+- no horizontal overflow;
+- no broken images;
+- no clipped primary copy/controls;
+- correct content order and image/text pairing;
+- all planned interactions;
+- Review Mode does not corrupt Consumer Mode.
+
+If browser/runtime verification cannot be performed, mobile/interaction QA remains `BLOCKED`.
 
 ## Domain leakage QA
 
-- Core workflow files contain no company-specific product data.
-- Channel profiles contain no category selling points.
-- Locale profiles contain no consumer stereotypes.
-- Region overlays contain no regional persona.
-- Category-specific logic appears only in category overlays, examples, evals, private overlays, or project evidence.
+- generic workflow files contain no private company/product data;
+- channel profiles contain no category selling points;
+- locale profiles contain no consumer stereotypes;
+- region overlays contain no regional persona;
+- category/product/site-specific logic appears only in explicit profiles, overlays, examples/evals, private context, or project evidence.
