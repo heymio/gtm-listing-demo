@@ -29,7 +29,7 @@ The Router preserves the global configuration model and passes selected configur
 | Brand / Private Overlay | Company rules, internal capabilities, confidential claims, and approvals |
 | Project Evidence | Actual facts, consumer needs, scenarios, keywords, assets, and decisions |
 
-Keep `market`, `locale`, `region_overlays`, `channel`, `category`, `offer`, and `page_targets` distinct. A locale or region label is never consumer evidence by itself.
+Keep `market`, `locale`, `region_overlays`, `channel`, `site/account capability`, `category`, `offer`, and `page_targets` distinct. A locale or region label is never consumer evidence by itself.
 
 ## Stage routing
 
@@ -66,7 +66,9 @@ Show detailed state manifests only for `PARTIAL`, `BLOCKED`, or explicit audit/s
 
 ## Transition Command
 
-Treat `continue`, `next`, `go`, `go next`, `继续`, `下一步`, and equivalent wording as a **Transition Command** unless the user explicitly asks to keep improving the current artifact.
+Treat `continue`, `next`, `go`, `go next`, `继续`, `下一步`, and clearly equivalent wording as a **Transition Command** unless the user explicitly asks to keep improving the current artifact.
+
+Ambiguous pause wording such as `先这样` does **not** advance a major stage by itself. Current-asset acceptance such as `这张先过` accepts and locks the exact current Production asset; it does not skip incomplete Production or Hardening.
 
 On a Transition Command:
 
@@ -118,7 +120,7 @@ It owns Product Truth, offer/page boundaries, claim readiness, consumer strategy
 
 > Produce the approved artifacts.
 
-It is artifact-first. It uses one-job Asset Packets, preserves product identity, applies visual direction and evidence rules, records candidate history and creative approval, performs asset-level and set-level Creative QA, and creates Production Freeze only for the complete current production scope.
+It is artifact-first. It uses one-job Asset Packets, preserves product identity, applies visual direction and evidence rules, records candidate history and creative approval, performs asset-level and set-level Creative QA, and creates Production Freeze only for the complete current production scope. The Freeze binds each required Asset ID to the exact selected candidate and output reference and cannot be ready while blockers, revisions, stale Set QA, or missing final assets remain.
 
 ### Hardening
 
@@ -126,7 +128,7 @@ It is artifact-first. It uses one-job Asset Packets, preserves product identity,
 
 > Are the exact final artifacts safe, channel-correct, technically valid, and ready to assemble/deliver?
 
-It owns final file identity, evidence and role/scope verification, channel/frontend fidelity, Demo assembly, delivery parity, standalone HTML validation, and final QA.
+It owns final file identity, evidence and role/scope verification, channel/frontend fidelity, Demo assembly, delivery parity, standalone HTML static preflight, exact-Demo-SHA no-network browser runtime verification, and final QA. Missing mandatory evidence remains `UNVERIFIED/BLOCKED` or `FAIL`; caller state cannot turn a required gate into a false PASS.
 
 ## State and resume
 
