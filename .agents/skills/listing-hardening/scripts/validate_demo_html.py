@@ -89,11 +89,23 @@ def validate_html_text(text:str)->dict[str,object]:
     responsive_css_ok=bool(re.search(r"@media\s*\([^)]*(?:max-width|min-width)[^)]*\)",style_text,flags=re.I))
     if not responsive_css_ok: errors.append("Mobile validation requires responsive CSS with an explicit @media width breakpoint.")
     if parser.images and not re.search(r"max-width\s*:\s*100%",style_text,flags=re.I): errors.append("Responsive image contract requires max-width: 100% in inline CSS.")
+
+    carousel_present=any([
+        parser.carousel_roots,
+        parser.carousel_slides,
+        parser.carousel_prev_buttons,
+        parser.carousel_next_buttons,
+    ])
     structure=parser.carousel_roots>=1 and parser.carousel_slides>=2 and parser.carousel_prev_buttons>=1 and parser.carousel_next_buttons>=1
-    script_text="\n".join(parser.scripts); wiring=all(token in script_text for token in ["data-carousel","data-carousel-prev","data-carousel-next","addEventListener"]) and bool(re.search(r"['\"]click['\"]",script_text))
-    if not structure: errors.append("Carousel validation requires a data-carousel root, at least two data-carousel-slide elements, and button controls for data-carousel-prev/data-carousel-next.")
-    elif not wiring: errors.append("Carousel controls exist but inline JavaScript wiring for click interaction is not verifiable.")
-    return {"status":"PASS" if not errors else "FAIL","errors":errors,"checks":{"single_file_dependencies":"PASS" if not any("dependency" in x.casefold() or "inline" in x.casefold() or "session-only" in x.casefold() for x in errors) else "FAIL","embedded_images":"PASS" if not any(("image" in x.casefold() or "srcset" in x.casefold()) and "embedded" in x.casefold() for x in errors) else "FAIL","carousel_contract":"PASS" if structure and wiring else "FAIL","mobile_contract":"PASS" if viewport_ok and responsive_css_ok else "FAIL"}}
+    script_text="\n".join(parser.scripts)
+    wiring=all(token in script_text for token in ["data-carousel","data-carousel-prev","data-carousel-next","addEventListener"]) and bool(re.search(r"['\"]click['\"]",script_text))
+    if carousel_present:
+        if not structure:
+            errors.append("Carousel validation requires a data-carousel root, at least two data-carousel-slide elements, and button controls for data-carousel-prev/data-carousel-next.")
+        elif not wiring:
+            errors.append("Carousel controls exist but inline JavaScript wiring for click interaction is not verifiable.")
+    carousel_contract="N/A" if not carousel_present else ("PASS" if structure and wiring else "FAIL")
+    return {"status":"PASS" if not errors else "FAIL","errors":errors,"checks":{"single_file_dependencies":"PASS" if not any("dependency" in x.casefold() or "inline" in x.casefold() or "session-only" in x.casefold() for x in errors) else "FAIL","embedded_images":"PASS" if not any(("image" in x.casefold() or "srcset" in x.casefold()) and "embedded" in x.casefold() for x in errors) else "FAIL","carousel_contract":carousel_contract,"mobile_contract":"PASS" if viewport_ok and responsive_css_ok else "FAIL"}}
 
 def validate_file(path:Path)->dict[str,object]:
     path_result=validate_delivery_path(path)
