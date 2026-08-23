@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate the global v0.3.2 overlay/distribution shape and leakage boundary."""
+"""Validate Global v0.3.3 overlay/distribution shape and leakage boundary."""
 
 from __future__ import annotations
 
@@ -34,16 +34,14 @@ def fail(message: str) -> None:
 
 def main() -> int:
     version = REPO_ROOT / "VERSION"
-    if not version.is_file() or version.read_text(encoding="utf-8").strip() != "0.3.2":
-        fail("VERSION must be exactly 0.3.2 for this migration")
+    if not version.is_file() or version.read_text(encoding="utf-8").strip() != "0.3.3":
+        fail("VERSION must be exactly 0.3.3 for this migration")
 
     for name in ["gtm-listing-demo", *INTERNAL]:
         skill = SKILLS_ROOT / name / "SKILL.md"
         if not skill.is_file():
             fail(f"missing sibling Skill: {name}")
 
-    # The user-facing Skill keeps discoverable compatibility profile copies,
-    # while listing-planning owns runtime profile loading. They must never drift.
     public_profiles = SKILLS_ROOT / "gtm-listing-demo" / "profiles"
     planning_profiles = SKILLS_ROOT / "listing-planning" / "profiles"
     for group, filename in PROFILE_MIRRORS:
@@ -60,7 +58,11 @@ def main() -> int:
     for name in INTERNAL:
         if name not in package_text:
             fail(f"compatibility package does not include {name}")
-    for filename in ["validate_demo_html.py", "fingerprint_assets.py", "production_state.py", "validate_planning_contracts.py", "single_context_limitation"]:
+    for filename in [
+        "validate_demo_html.py", "validate_demo_runtime.py", "fingerprint_assets.py",
+        "production_state.py", "validate_planning_contracts.py", "validate_install.py",
+        "write_deterministic_zip", "reject_symlinks", "single_context_limitation",
+    ]:
         if filename not in package_text:
             fail(f"compatibility package contract missing {filename}")
 
@@ -71,6 +73,9 @@ def main() -> int:
     for name in ["gtm-listing-demo", *INTERNAL]:
         if name not in codex_text:
             fail(f"Codex bundle contract does not include {name}")
+    for phrase in ["write_deterministic_zip", "reject_symlinks", "validate_overlay.py"]:
+        if phrase not in codex_text:
+            fail(f"Codex bundle hardening missing: {phrase}")
 
     generic_paths = [
         SKILLS_ROOT / "gtm-listing-demo" / "SKILL.md",
@@ -86,7 +91,7 @@ def main() -> int:
         if forbidden in joined:
             fail(f"generic core leakage: {forbidden}")
 
-    print("PASS: global five-Skill overlay/distribution contract is valid")
+    print("PASS: Global five-Skill v0.3.3 overlay/distribution contract is valid")
     print(f"PASS: {len(PROFILE_MIRRORS)} public/Planning profile mirrors are identical")
     return 0
 

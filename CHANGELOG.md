@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.3.3 — Global fail-closed hard verification
+
+- Made Delivery State 0.2 fail closed: mandatory pre-Demo verification cannot be disabled by caller state and an empty required asset set cannot pass.
+- Recomputed required final assets as a union across locked plan, implementation, asset-slot contracts, explicit required IDs, and blocker/revision state instead of trusting one non-empty source.
+- Strengthened Production Freeze with exact `asset_id -> candidate_id -> output_ref` bindings, blocker/revision rejection, current Set QA requirements, and recomputed readiness.
+- Added canonical executable `FRONTEND_FIDELITY_GATE` and `DEMO_RUNTIME_GATE` while retaining channel capability limits as profile/site/account evidence rather than fixed marketplace defaults.
+- Added real Pillow-backed PNG/JPEG/WebP decode/load verification; missing decoder or damaged pixel data cannot receive physical hard-verification PASS.
+- Added `PROOF_VISUAL` claim/fact/authoritative-source binding and trusted claim-review requirements.
+- Separated standalone HTML static preflight from runtime interaction proof; added SVG/inline-style external-resource rejection and removed static keyword-based carousel hard PASS.
+- Added real no-network Playwright/Chromium QA at 1440px and 390px with broken-image, overflow, clipping, and actual carousel next/previous verification.
+- Made one-install and five-Skill Codex ZIPs deterministic, symlink-safe, reproducible, and self-validating after extraction.
+- Added exact-SHA release automation with a read-only validation/build job and isolated no-checkout publish job; absent-tag handling and explicit repository targeting follow the hardened Japan v0.3.3 release lessons.
+- Preserved Global market/locale/region/channel/category/profile architecture and excluded Japan/site/product-specific defaults from the generic core.
+
 ## 0.3.2 — Global creative-first execution baseline
 
 - Replaced the monolithic runtime with a thin `$gtm-listing-demo` Router plus sibling `listing-planning`, `listing-production`, `listing-hardening`, and `listing-evidence-auditor` Skills while retaining one normal user invocation.

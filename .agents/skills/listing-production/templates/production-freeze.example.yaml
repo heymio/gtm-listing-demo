@@ -1,12 +1,18 @@
 production_freeze:
   expected_assets: 3
+  required_asset_ids:
+    - G1
+    - G2
+    - A1
   user_approved_assets:
     - G1
   blocked_assets: []
   revision_pending:
     - G2
     - A1
-  approved_output_refs:
-    - file:g1-v1
+  approved_outputs:
+    G1:
+      candidate_id: G1-v1
+      output_ref: file:g1-v1
   set_qa_status: MISSING
   ready_for_hardening: false

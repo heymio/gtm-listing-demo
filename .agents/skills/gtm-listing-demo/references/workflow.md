@@ -48,24 +48,28 @@ Inventory source assets and identify missing render/photo/UI/design/evidence nee
 
 Produce the Creative Strategy Kernel, complete page plan, **Complete Demo-Required Production Set**, Page Visual System, Evidence Mode for every final asset, source bindings, and Production Handoff.
 
-Priority proof coverage does not make a partial asset set complete.
+Priority proof coverage does not make a partial asset set complete. `PROOF_VISUAL` planning must preserve the exact facts/claims and authoritative source bindings it will later need to prove.
 
 ## Stage 7.5–8 — Focused Visual Production
 
 `listing-production` executes one Asset Packet at a time with artifact-first behavior, identity/proof source rules, Selection Lock, set-level Creative QA, exact-output-bound final whole-set review, Scope Delta, and Production Freeze.
 
+The current required production set is not `asset_set` alone: page-plan requirements and still-required blocked roles remain in completion accounting. Production Freeze binds each required Asset ID to the exact selected candidate/output and cannot be ready with blockers, revisions, stale Set QA, missing exact bindings, or an empty set.
+
 ## Stage 8.5 — Pre-Demo Exact-File Audit
 
 `listing-hardening` delegates the complete current final set to `listing-evidence-auditor`. Exact files, hashes, approvals, role/scope evidence, and required-set completeness must be reconciled before final Demo consumption.
+
+For Demo Delivery State 0.2 this audit is mandatory. Caller state cannot disable it. Supported raster assets require real decoder verification; `PROOF_VISUAL` additionally requires exact claim/fact/authoritative-source binding and trusted claim review.
 
 ## Stage 9 — Demo Assembly
 
 Assemble only approved/verified project content into the locked page/channel architecture. Reproduce a native shell only when current frontend evidence supports it; otherwise use a clearly labeled Content Review Demo.
 
-The user-facing final project Demo is one standalone `.html` file with portable embedded runtime resources.
+The user-facing final project Demo is one standalone `.html` file with portable embedded runtime resources. Run static preflight before runtime QA; static source inspection never substitutes for interaction proof.
 
 ## Stage 10 — Final QA
 
 Run exact asset, claim, channel, market/locale, frontend, delivery parity, standalone dependency, responsive/mobile, interaction, and Review Mode QA.
 
-Static validation is necessary but not sufficient. Runtime verification requires 1440px desktop and 390px mobile. If browser/runtime verification cannot be performed, mobile/interaction status remains `BLOCKED`.
+Final hard verification includes executable `FRONTEND_FIDELITY_GATE` and `DEMO_RUNTIME_GATE`. Browser evidence must bind to the exact Demo SHA, observe zero external network requests, cover 1440px desktop and 390px mobile, and actually exercise both carousel directions when present. If browser runtime cannot be performed, runtime status remains `UNVERIFIED/BLOCKED`.
